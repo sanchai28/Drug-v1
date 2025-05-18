@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบริหารจัดการคลังยา รพสต.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', 'Inter', sans-serif;
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        .tab-link.active {
+            border-bottom-color: #ffffff;
+            color: #ffffff;
+            font-weight: 600;
+            background-color: #1d4ed8; /* blue-700 */
+        }
+        .tab-link {
+            border-bottom-width: 4px;
+            border-color: transparent;
+            transition: all 0.3s ease;
+        }
+        .tab-link:not(.active):hover {
+            background-color: #3b82f6; /* blue-500 */
+            color: #eff6ff; /* blue-50 */
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        .custom-table th, .custom-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb; /* gray-200 */
+            white-space: nowrap; 
+        }
+        .custom-table thead th {
+            background-color: #60a5fa; /* blue-400 */
+            color: white;
+            font-weight: 600;
+        }
+        .custom-table tbody tr:nth-child(even) { background-color: #f9fafb; /* gray-50 */ }
+        .custom-table tbody tr:hover { background-color: #eff6ff; /* blue-50 */ }
+
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-secondary { background-color: #6b7280; color: white; }
+        .btn-secondary:hover { background-color: #4b5563; }
+        .btn-danger { background-color: #ef4444; color: white; }
+        .btn-danger:hover { background-color: #dc2626; }
+        .btn-success { background-color: #22c55e; color: white; }
+        .btn-success:hover { background-color: #16a34a; }
+        .btn-warning { background-color: #f59e0b; color: white; }
+        .btn-warning:hover { background-color: #d97706; }
+        .btn-info { background-color: #06b6d4; color: white; } 
+        .btn-info:hover { background-color: #0891b2; }
+
+
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #d1d5db;
+            margin-top: 0.25rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            outline: none;
+        }
+        .label {
+            display: block;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+        .nav-container {
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        .nav-container::-webkit-scrollbar { height: 6px; }
+        .nav-container::-webkit-scrollbar-thumb { background-color: #60a5fa; border-radius: 3px; }
+        .nav-container::-webkit-scrollbar-track { background-color: #2563eb; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 50;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            opacity: 0;
+            transform: scale(0.9);
+            transition: opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .modal.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto; 
+            padding: 2rem; 
+            border: 1px solid #d1d5db;
+            width: 90%;
+            max-width: 900px; 
+            border-radius: 0.75rem; 
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); 
+            transform: translateY(-20px); 
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) 0.1s, opacity 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) 0.1s;
+        }
+        .modal.active .modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .close-button {
+            color: #9ca3af; 
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            transition: color 0.2s ease;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: #1f2937; 
+            text-decoration: none;
+            cursor: pointer;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+        .suggestions-box .suggestion-item.suggestion-active {
+            background-color: #dbeafe; /* blue-100 from Tailwind */
+            color: #1e40af; /* blue-800 from Tailwind */
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold">ระบบบริหารจัดการคลังยา รพสต.</h1>
+                <p class="text-sm text-blue-200">Inventory Management System for SHPH</p>
+            </div>
+            <div class="mt-2 sm:mt-0 text-sm">
+                <span>ผู้ใช้งาน: <span id="currentUser" class="font-semibold">กรุณาเข้าสู่ระบบ</span></span>
+                <button onclick="logout()" class="ml-4 text-blue-200 hover:text-white transition duration-150">ออกจากระบบ</button>
+            </div>
+        </div>
+        <nav class="bg-blue-700">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 nav-container">
+                <ul class="flex space-x-1 text-sm sm:text-base">
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต.,เจ้าหน้าที่ รพ. แม่ข่าย"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="dashboard">ภาพรวม</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="medicineMaster">จัดการข้อมูลยา</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="inventoryManagement">จัดการคลังยา (รพสต.)</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="requisitionManagement">จัดการใบเบิกยา (รพสต.)</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพ. แม่ข่าย"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="requisitionApproval">อนุมัติใบเบิกยา (รพ.แม่ข่าย)</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="goodsReceiving">รับยาเข้าคลัง (รพสต.)</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="dispenseMedicine">ตัดจ่ายยา</a></li>
+                    <li data-roles="ผู้ดูแลระบบ"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="unitServiceManagement">จัดการหน่วยบริการ</a></li>
+                    <li data-roles="ผู้ดูแลระบบ"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="admin">ผู้ดูแลระบบ</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div id="dashboard" class="tab-content card">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">ภาพรวมระบบ</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="bg-blue-100 p-4 rounded-lg shadow">
+                    <h3 class="font-semibold text-blue-700">ยาคงคลังทั้งหมด</h3>
+                    <p class="text-2xl font-bold text-blue-900" id="dashboardTotalMedicines">- <span class="text-sm">รายการ</span></p>
+                </div>
+                <div class="bg-yellow-100 p-4 rounded-lg shadow">
+                    <h3 class="font-semibold text-yellow-700">ยาใกล้หมดสต็อก</h3>
+                    <p class="text-2xl font-bold text-yellow-900" id="dashboardLowStock">- <span class="text-sm">รายการ</span></p>
+                </div>
+                <div class="bg-green-100 p-4 rounded-lg shadow">
+                    <h3 class="font-semibold text-green-700">ใบเบิกรออนุมัติ</h3>
+                    <p class="text-2xl font-bold text-green-900" id="dashboardPendingRequisitions">- <span class="text-sm">รายการ</span></p>
+                </div>
+            </div>
+            <p class="mt-6 text-gray-600">ยินดีต้อนรับเข้าสู่ระบบบริหารจัดการคลังยา รพสต. กรุณาเลือกเมนูการทำงานจากแท็บด้านบน</p>
+        </div>
+
+        <div id="medicineMaster" class="tab-content card">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">การจัดการข้อมูลยา (Medicine Master Management)</h2>
+            <button onclick="openAddMedicineModal()" class="btn btn-primary mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill mr-2" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M8.5 4.5a.5.5 0 0 0-1 0v3h-3a.5.5 0 0 0 0 1h3v3a.5.5 0 0 0 1 0v-3h3a.5.5 0 0 0 0-1h-3z"/></svg>
+                เพิ่มรายการยาใหม่
+            </button>
+            <div class="overflow-x-auto">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>รหัสยา</th>
+                            <th>ชื่อสามัญ</th>
+                            <th>ความแรง</th>
+                            <th>หน่วยนับ</th>
+                            <th>จุดสั่งซื้อขั้นต่ำ</th>
+                            <th>การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="medicineMasterTableBody">
+                        <tr><td colspan="6" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลยา...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="inventoryManagement" class="tab-content card">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">การจัดการคลังยา รพสต. (Roposo Inventory Management)</h2>
+            <div class="overflow-x-auto">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>รหัสยา</th>
+                            <th>ชื่อยา</th>
+                            <th>ยอดคงเหลือปัจจุบัน (รวมทุก Lot)</th>
+                            <th>สถานะ</th>
+                            <th>ประวัติ (แยก Lot)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryManagementTableBody">
+                         <tr><td colspan="5" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลคลังยา...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="requisitionManagement" class="tab-content card">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">การจัดการใบเบิกยา (Requisition Management - รพสต.)</h2>
+            <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-3 mb-6 bg-gray-50 p-4 rounded-lg shadow-sm">
+                <div>
+                    <label for="startDateReq" class="label text-sm">วันที่เริ่มต้น:</label>
+                    <input type="text" id="startDateReq" name="startDateReq" class="input-field !mb-0 !py-2 !px-3 text-sm thai-date-formatter" placeholder="dd/mm/yyyy">
+                </div>
+                <div>
+                    <label for="endDateReq" class="label text-sm">วันที่สิ้นสุด:</label>
+                    <input type="text" id="endDateReq" name="endDateReq" class="input-field !mb-0 !py-2 !px-3 text-sm thai-date-formatter" placeholder="dd/mm/yyyy">
+                </div>
+                <button onclick="filterDataByDateRange('requisitionManagement')" class="btn btn-primary !py-2 !px-4 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search mr-2" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
+                    ค้นหา
+                </button>
+            </div>
+            <button onclick="openCreateRequisitionModal()" class="btn btn-primary mb-4">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-plus-fill mr-2" viewBox="0 0 16 16"><path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0M9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1M8.5 7v1.5H10a.5.5 0 0 1 0 1H8.5V11a.5.5 0 0 1-1 0V9.5H6a.5.5 0 0 1 0-1h1.5V7a.5.5 0 0 1 1 0"/></svg>
+                สร้างใบเบิกยาใหม่
+            </button>
+            <div class="overflow-x-auto">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>เลขที่ใบเบิก</th>
+                            <th>วันที่เบิก</th>
+                            <th>ผู้เบิก</th>
+                            <th>สถานะใบเบิก</th>
+                            <th>การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requisitionManagementTableBody">
+                         <tr><td colspan="5" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลใบเบิก...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="requisitionApproval" class="tab-content card">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">การอนุมัติใบเบิกยา (Requisition Approval - รพ. แม่ข่าย)</h2>
+             <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-3 mb-6 bg-gray-50 p-4 rounded-lg shadow-sm">
+                <div>
+                    <label for="startDateApprv" class="label text-sm">วันที่เริ่มต้น:</label>
+                    <input type="text" id="startDateApprv" name="startDateApprv" class="input-field !mb-0 !py-2 !px-3 text-sm thai-date-formatter" placeholder="dd/mm/yyyy">
+                </div>
+                <div>
+                    <label for="endDateApprv" class="label text-sm">วันที่สิ้นสุด:</label>
+                    <input type="text" id="endDateApprv" name="endDateApprv" class="input-field !mb-0 !py-2 !px-3 text-sm thai-date-formatter" placeholder="dd/mm/yyyy">
+                </div>
+                <button onclick="filterDataByDateRange('requisitionApproval')" class="btn btn-primary !py-2 !px-4 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search mr-2" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
+                    ค้นหา
+                </button>
+            </div>
+            <p class="text-gray-600 mb-4">รายการใบเบิกที่ รพสต. ส่งมา (รออนุมัติ)</p>
+            <div class="overflow-x-auto">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>เลขที่ใบเบิก</th>
+                            <th>รพสต. ผู้ขอเบิก</th>
+                            <th>วันที่ขอเบิก</th>
+                            <th>จำนวนรายการ</th>
+                            <th>การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requisitionApprovalTableBody">
+                        <tr><td colspan="5" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลใบเบิกรออนุมัติ...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="goodsReceiving" class="tab-content card">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">การรับยาเข้าคลัง รพสต. (Goods Receiving)</h2>
+            <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-3 mb-6 bg-gray-50 p-4 rounded-lg shadow-sm">
+                <div>
+                    <label for="startDateRecv" class="label text-sm">วันที่เริ่มต้น:</label>
+                    <input type="text" id="startDateRecv" name="startDateRecv" class="input-field !mb-0 !py-2 !px-3 text-sm thai-date-formatter" placeholder="dd/mm/yyyy">
+                </div>
+                <div>
+                    <label for="endDateRecv" class="label text-sm">วันที่สิ้นสุด:</label>
+                    <input type="text" id="endDateRecv" name="endDateRecv" class="input-field !mb-0 !py-2 !px-3 text-sm thai-date-formatter" placeholder="dd/mm/yyyy">
+                </div>
+                <button onclick="filterDataByDateRange('goodsReceiving')" class="btn btn-primary !py-2 !px-4 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search mr-2" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
+                    ค้นหา
+                </button>
+            </div>
+            
+            <button onclick="openManualGoodsReceiveModal()" class="btn btn-success mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-seam-fill mr-2" viewBox="0 0 16 16">
+                    <path fill-rule="evenodd" d="M15.528 2.973a.75.75 0 0 1 .472.696v8.662a.75.75 0 0 1-.472.696l-7.25 2.9a.75.75 0 0 1-.557 0l-7.25-2.9A.75.75 0 0 1 0 12.331V3.669a.75.75 0 0 1 .471-.696L7.75.072a.75.75 0 0 1 .5 0zM10.404 2 4.25 4.461 1.846 3.5 1 3.839v.4l6.5 2.6v7.922l.5.2.5-.2V6.84l6.5-2.6v-.4l-.846-.339L10.404 2z"/>
+                </svg>
+                รับยาเข้าคลัง (กรอกเอง/ซื้อตรง)
+            </button>
+            
+            <div class="mt-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">รายการรับยาเข้าคลัง (กรอกเอง/ซื้อตรง)</h3>
+                <div class="overflow-x-auto">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>เลขที่เอกสารรับ</th>
+                                <th>วันที่รับ</th>
+                                <th>ผู้รับ</th>
+                                <th>แหล่งที่มา/ผู้ขาย</th>
+                                <th class="text-center">จำนวนรายการ</th>
+                                <th>การดำเนินการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="manualGoodsReceivedTableBody">
+                            <tr><td colspan="6" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูล...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <hr class="my-8">
+
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">ยืนยันการรับยาจากใบเบิกที่อนุมัติแล้ว</h3>
+            <div class="overflow-x-auto">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>เลขที่ใบเบิก</th>
+                            <th>วันที่อนุมัติ</th>
+                            <th>ผู้อนุมัติ (รพ.แม่ข่าย)</th>
+                            <th>สถานะ</th>
+                            <th>การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="goodsReceivingTableBody">
+                        <tr><td colspan="5" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลใบเบิกที่รอรับยา...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="dispenseMedicine" class="tab-content card">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6">การตัดจ่ายยา (Dispense Medicine)</h2>
+            <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-3 mb-6 bg-gray-50 p-4 rounded-lg shadow-sm">
+                <div>
+                    <label for="startDateDisp" class="label text-sm">วันที่เริ่มต้น:</label>
+                    <input type="text" id="startDateDisp" name="startDateDisp" class="input-field !mb-0 !py-2 !px-3 text-sm thai-date-formatter" placeholder="dd/mm/yyyy">
+                </div>
+                <div>
+                    <label for="endDateDisp" class="label text-sm">วันที่สิ้นสุด:</label>
+                    <input type="text" id="endDateDisp" name="endDateDisp" class="input-field !mb-0 !py-2 !px-3 text-sm thai-date-formatter" placeholder="dd/mm/yyyy">
+                </div>
+                <button onclick="filterDataByDateRange('dispenseMedicine')" class="btn btn-primary !py-2 !px-4 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search mr-2" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
+                    ค้นหา
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="card p-4 bg-gray-50">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3">1. ตัดจ่ายยา (กรอกข้อมูลเอง)</h3>
+                    <p class="text-sm text-gray-600 mb-4">บันทึกการจ่ายยา โดยการกรอกข้อมูลรายการยา, จำนวน, เลขที่ล็อต และวันหมดอายุ</p>
+                    <button onclick="openManualDispenseModal()" class="btn btn-success w-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square mr-2" viewBox="0 0 16 16">
+                            <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                            <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
+                        </svg>
+                        กรอกข้อมูลตัดจ่ายยา
+                    </button>
+                </div>
+                <div class="card p-4 bg-gray-50">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3">2. ตัดจ่ายยา (อัปโหลดไฟล์ Excel)</h3>
+                     <p class="text-sm text-gray-600 mb-4">นำเข้าข้อมูลการจ่ายยาจากไฟล์ Excel (ต้องมีคอลัมน์ Lot และ Exp)</p>
+                    <label for="excelUploadDispense" class="label sr-only">อัปโหลดไฟล์ Excel สำหรับตัดจ่ายยา:</label>
+                    <input type="file" id="excelUploadDispense" accept=".xls,.xlsx" class="input-field file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-3">
+                    <button onclick="uploadDispenseExcel()" class="btn btn-info w-full">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-arrow-up mr-2" viewBox="0 0 16 16">
+                            <path d="M8.5 11.5a.5.5 0 0 1-1 0V7.707L6.354 8.854a.5.5 0 1 1-.708-.708l2-2a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 7.707z"/>
+                            <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
+                        </svg>
+                        อัปโหลดและประมวลผล
+                    </button>
+                </div>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-700 mt-8 mb-3">ประวัติการตัดจ่ายยา (ล่าสุด 10 รายการ)</h3>
+            <div class="overflow-x-auto">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>เลขที่เอกสาร</th>
+                            <th>วันที่จ่าย</th>
+                            <th>ผู้จ่ายยา</th>
+                            <th class="text-center">จำนวนรายการ</th>
+                            <th>การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dispenseHistoryTableBody">
+                        <tr><td colspan="5" class="text-center text-gray-400 py-4">กำลังโหลดประวัติการตัดจ่ายยา...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="unitServiceManagement" class="tab-content card">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">การจัดการหน่วยบริการ (Unit Service Management)</h2>
+            <button onclick="openAddUnitServiceModal()" class="btn btn-primary mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-hospital-fill mr-2" viewBox="0 0 16 16">
+                    <path d="M6.5 0A1.5 1.5 0 0 0 5 1.5v1a.5.5 0 0 0 .5.5H8a.5.5 0 0 0 .5-.5v-1A1.5 1.5 0 0 0 6.5 0zM5.072.563A1.513 1.513 0 0 0 4 1.518v1.243a1.513 1.513 0 0 0 1.072 1.414L4 6.072V13.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V6.072L8.928 4.175a1.513 1.513 0 0 0 1.072-1.414V1.518a1.513 1.513 0 0 0-1.072-.955H6.5a.5.5 0 0 0-.428.063zM7.5 5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5m0 3h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5m0 3h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5z"/>
+                </svg>
+                เพิ่มหน่วยบริการใหม่
+            </button>
+            <div class="overflow-x-auto">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>รหัสหน่วยบริการ (HCODE)</th>
+                            <th>ชื่อหน่วยบริการ</th>
+                            <th>การดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unitServiceTableBody">
+                        <tr><td colspan="3" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลหน่วยบริการ...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+
+        <div id="admin" class="tab-content card">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">ผู้ดูแลระบบ (Admin)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="card p-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">การจัดการผู้ใช้งาน</h3>
+                    <button onclick="openAddNewUserModal()" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-plus-fill mr-2" viewBox="0 0 16 16"><path d="M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/><path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/></svg>
+                        เพิ่มผู้ใช้งานใหม่
+                    </button>
+                    <div class="mt-6 overflow-x-auto">
+                        <h4 class="text-md font-semibold text-gray-700 mb-2">รายชื่อผู้ใช้งาน</h4>
+                        <table class="custom-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>ชื่อ-นามสกุล</th>
+                                    <th>บทบาท</th>
+                                    <th>หน่วยบริการ (HCODE)</th>
+                                    <th>ชื่อหน่วยบริการ</th>
+                                    <th>สถานะ</th>
+                                    <th>การดำเนินการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUserTableBody">
+                                <tr><td colspan="8" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลผู้ใช้งาน...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card p-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">การจัดการข้อมูลหลัก</h3>
+                    <button onclick="openEditHospitalInfoModal()" class="btn btn-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-fill mr-2" viewBox="0 0 16 16"><path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/></svg>
+                        แก้ไขข้อมูล รพสต./รพ.แม่ข่าย
+                    </button>
+                    <p class="text-sm text-gray-600 mt-2">ตั้งค่าข้อมูลพื้นฐานของระบบ</p>
+                </div>
+                 <div class="card p-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">รายงานและสถิติ</h3>
+                    <button onclick="openSummaryReportModal()" class="btn btn-info">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bar-chart-line-fill mr-2" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1z"/></svg>
+                        ดูรายงานภาพรวม
+                    </button>
+                    <p class="text-sm text-gray-600 mt-2">เข้าถึงรายงานการใช้ยาและสต็อกคงคลัง</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="formModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('formModal')">&times;</span>
+            <h3 id="modalTitle" class="text-xl font-semibold text-gray-800 mb-4">แบบฟอร์ม</h3>
+            <div id="modalBody">
+                <p>กำลังโหลดเนื้อหา...</p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center p-4 text-gray-600 text-sm border-t border-gray-200 mt-8">
+        ระบบบริหารจัดการคลังยา รพสต. &copy; 2025
+    </footer>
+    
+    <script src="/static/utils.js"></script>
+    <script src="/static/modal.js"></script>
+    <script src="/static/tabs.js"></script>
+    <script src="/static/medicines.js"></script>
+    <script src="/static/inventory.js"></script>
+    <script src="/static/requisitions.js"></script>
+    <script src="/static/dispense.js"></script>
+    <script src="/static/goods_receiving.js"></script>
+    <script src="/static/unitservice.js"></script>
+    <script src="/static/admin.js"></script>
+    <script src="/static/main.js"></script> 
+</body>
+</html>
+

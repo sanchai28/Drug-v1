@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบ - ระบบคลังยา รพสต.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 sm:p-10 rounded-xl shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+            <svg class="mx-auto h-12 w-auto text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12z" />
+            </svg>
+            <h2 class="mt-6 text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
+                ระบบบริหารจัดการคลังยา รพสต.
+            </h2>
+            <p class="mt-2 text-sm text-gray-600">กรุณาเข้าสู่ระบบเพื่อใช้งาน</p>
+        </div>
+        <form id="loginForm">
+            <div class="mb-6">
+                <label for="username" class="block text-sm font-medium leading-6 text-gray-900">ชื่อผู้ใช้งาน (Username)</label>
+                <div class="mt-2">
+                    <input id="username" name="username" type="text" autocomplete="username" required
+                           class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6">
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <div class="flex items-center justify-between">
+                    <label for="password" class="block text-sm font-medium leading-6 text-gray-900">รหัสผ่าน</label>
+                    </div>
+                <div class="mt-2">
+                    <input id="password" name="password" type="password" autocomplete="current-password" required
+                           class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6">
+                </div>
+            </div>
+
+            <div>
+                <button type="submit"
+                        class="flex w-full justify-center rounded-md bg-blue-600 px-3 py-2.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors duration-150">
+                    เข้าสู่ระบบ
+                </button>
+            </div>
+        </form>
+        <p id="loginError" class="mt-4 text-center text-sm text-red-600"></p>
+    </div>
+
+    <script>
+        // login.js (ส่วนของ login.html)
+        const API_BASE_URL_LOGIN = 'http://sanchai.totddns.com:63520/api'; // Ensure this matches your Flask API URL
+
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            const loginErrorElement = document.getElementById('loginError');
+            
+            loginErrorElement.textContent = ''; // Clear previous errors
+
+            const username = usernameInput.value;
+            const password = passwordInput.value;
+
+            if (!username || !password) {
+                loginErrorElement.textContent = 'กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL_LOGIN}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Login successful
+                    console.log('Login successful:', data);
+                    // Store user info (excluding password) and token (if any)
+                    localStorage.setItem('currentUser', JSON.stringify({
+                        id: data.user.id,
+                        username: data.user.username,
+                        full_name: data.user.full_name,
+                        role: data.user.role,
+                        hcode: data.user.hcode 
+                        // token: data.access_token // If using JWT
+                    }));
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'เข้าสู่ระบบสำเร็จ!',
+                        text: `ยินดีต้อนรับ, ${data.user.full_name}`,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = '/index'; // Redirect to the main application page
+                    });
+
+                } else {
+                    // Login failed
+                    loginErrorElement.textContent = data.error || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เข้าสู่ระบบไม่สำเร็จ',
+                        text: data.error || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง',
+                    });
+                }
+            } catch (error) {
+                console.error('Login request failed:', error);
+                loginErrorElement.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์';
+                 Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง',
+                });
+            }
+        });
+    </script>
+</body>
+</html>

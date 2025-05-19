@@ -1,7 +1,7 @@
 // utils.js
 
 // --- Global Constants ---
-const API_BASE_URL = 'http://sanchai.totddns.com:63520/api'; // URL ของ Backend API
+const API_BASE_URL = 'http://127.0.0.1:5000/api'; // URL ของ Backend API
 let currentSuggestionIndex = -1; // Used by navigateSuggestions, keep it accessible
 
 // --- Helper Functions for Date Formatting ---

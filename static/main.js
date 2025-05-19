@@ -194,7 +194,64 @@ async function logout() {
     });
 }
 
+/**
+ * Fetches and displays dashboard summary data.
+ */
+async function loadDashboardSummary() {
+    console.log("Loading dashboard summary...");
+    const totalMedicinesEl = document.getElementById('dashboardTotalMedicines');
+    const lowStockEl = document.getElementById('dashboardLowStock');
+    const pendingRequisitionsEl = document.getElementById('dashboardPendingRequisitions');
 
+    if (!totalMedicinesEl || !lowStockEl || !pendingRequisitionsEl) {
+        console.error("Dashboard summary elements not found in HTML.");
+        return;
+    }
+
+    // ตั้งค่าเริ่มต้น
+    totalMedicinesEl.innerHTML = '- <span class="text-sm">รายการ</span>';
+    lowStockEl.innerHTML = '- <span class="text-sm">รายการ</span>';
+    pendingRequisitionsEl.innerHTML = '- <span class="text-sm">รายการ</span>';
+
+    if (!currentUser) {
+        console.warn("Cannot load dashboard summary: currentUser is not defined.");
+        // อาจแสดงข้อความว่า "กรุณา login" ใน dashboard elements
+        return;
+    }
+
+    let queryParams = '';
+    if (currentUser.hcode) {
+        queryParams = `?hcode=${currentUser.hcode}&role=${currentUser.role}`;
+    } else if (currentUser.role === 'ผู้ดูแลระบบ') {
+        queryParams = `?role=${currentUser.role}`; // Admin อาจจะไม่ต้องส่ง hcode
+    } else {
+        // กรณีอื่นๆ ที่ไม่มี hcode และไม่ใช่ Admin อาจจะไม่สามารถโหลดข้อมูลได้
+        console.warn("Dashboard summary: Hcode not available for this user role.");
+        totalMedicinesEl.textContent = 'N/A';
+        lowStockEl.textContent = 'N/A';
+        pendingRequisitionsEl.textContent = 'N/A';
+        return;
+    }
+
+    try {
+        // fetchData ควรมาจาก utils.js
+        const summary = await fetchData(`/dashboard/summary${queryParams}`);
+        
+        if (summary) {
+            totalMedicinesEl.innerHTML = `${summary.total_medicines_in_stock || 0} <span class="text-sm">รายการ</span>`;
+            lowStockEl.innerHTML = `${summary.low_stock_medicines || 0} <span class="text-sm">รายการ</span>`;
+            pendingRequisitionsEl.innerHTML = `${summary.pending_requisitions || 0} <span class="text-sm">รายการ</span>`;
+        } else {
+            console.warn("Dashboard summary data is null or undefined.");
+        }
+    } catch (error) {
+        console.error("Error loading dashboard summary:", error);
+        totalMedicinesEl.textContent = 'Error';
+        lowStockEl.textContent = 'Error';
+        pendingRequisitionsEl.textContent = 'Error';
+        // Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลสรุป Dashboard ได้', 'error'); // fetchData น่าจะแสดง error แล้ว
+    }
+}
 // --- Data Loading Router ---
 /**
  * Loads data for the currently active tab based on its ID.
@@ -213,7 +270,7 @@ async function loadDataForTab(tabId) {
 
     switch (tabId) {
         case 'dashboard':
-            console.log("Dashboard tab selected.");
+            await loadDashboardSummary();
             break;
         case 'medicineMaster':
             if (typeof loadAndDisplayMedicines === 'function') await loadAndDisplayMedicines();

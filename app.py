@@ -6,7 +6,8 @@ from flask import send_from_directory
 from mysql.connector import Error
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash # Import for password hashing
-
+import pandas as pd
+from io import BytesIO
 app = Flask(__name__)
 CORS(app) 
 
@@ -1608,6 +1609,360 @@ def create_requisition():
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
+
+@app.route('/api/dashboard/summary', methods=['GET'])
+def get_dashboard_summary():
+    user_hcode = request.args.get('hcode')
+    user_role = request.args.get('role') # Role ของผู้ใช้ที่ login
+
+    if not user_hcode and user_role != 'ผู้ดูแลระบบ':
+        return jsonify({"error": "กรุณาระบุ hcode ของหน่วยบริการ"}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "ไม่สามารถเชื่อมต่อฐานข้อมูลได้"}), 500
+    cursor = conn.cursor(dictionary=True)
+
+    summary_data = {
+        "total_medicines_in_stock": 0,
+        "low_stock_medicines": 0,
+        "pending_requisitions": 0
+    }
+
+    try:
+        # 1. Total unique medicines in stock (quantity > 0)
+        #    นับจำนวนรายการยาที่ไม่ซ้ำกันซึ่งมีปริมาณคงเหลือมากกว่า 0 สำหรับ hcode ที่กำหนด
+        #    และยาเหล่านั้นต้อง active อยู่ในตาราง medicines
+        query_total_medicines = """
+            SELECT COUNT(DISTINCT m.id) as count
+            FROM medicines m
+            JOIN inventory i ON m.id = i.medicine_id
+            WHERE m.is_active = TRUE AND i.quantity_on_hand > 0 AND m.hcode = %s AND i.hcode = %s;
+        """
+        if user_hcode:
+            total_medicines_result = db_execute_query(query_total_medicines, (user_hcode, user_hcode), fetchone=True, cursor_to_use=cursor)
+            if total_medicines_result:
+                summary_data["total_medicines_in_stock"] = total_medicines_result['count']
+        elif user_role == 'ผู้ดูแลระบบ':
+            # สำหรับ Admin อาจจะแสดงผลรวมของทุก hcode หรือต้องมี logic เพิ่มเติม
+            # ที่นี่จะแสดงเป็น 0 ถ้าไม่ได้ระบุ hcode และไม่ใช่ admin
+            pass
+
+
+        # 2. Low stock medicines
+        #    นับจำนวนรายการยาที่ is_active = TRUE และ ปริมาณคงเหลือรวม (จากทุก lot) <= reorder_point
+        #    สำหรับ hcode ที่กำหนด
+        query_low_stock = """
+            SELECT COUNT(m.id) as count
+            FROM medicines m
+            LEFT JOIN (
+                SELECT medicine_id, hcode, SUM(quantity_on_hand) as total_quantity
+                FROM inventory
+                WHERE hcode = %s
+                GROUP BY medicine_id, hcode
+            ) AS i_sum ON m.id = i_sum.medicine_id AND m.hcode = i_sum.hcode
+            WHERE m.is_active = TRUE AND m.hcode = %s AND COALESCE(i_sum.total_quantity, 0) <= m.reorder_point AND COALESCE(i_sum.total_quantity, 0) > 0;
+        """
+        #  เพิ่ม COALESCE(i_sum.total_quantity, 0) > 0 เพื่อไม่นับยาที่หมดแล้ว (0 ชิ้น) ว่าเป็นยาใกล้หมด
+        if user_hcode:
+            low_stock_result = db_execute_query(query_low_stock, (user_hcode, user_hcode), fetchone=True, cursor_to_use=cursor)
+            if low_stock_result:
+                summary_data["low_stock_medicines"] = low_stock_result['count']
+        elif user_role == 'ผู้ดูแลระบบ':
+            pass
+
+
+        # 3. Pending requisitions
+        #    นับจำนวนใบเบิกที่สถานะเป็น 'รออนุมัติ'
+        #    ถ้าเป็น 'เจ้าหน้าที่ รพสต.' จะเห็นเฉพาะใบเบิกของ hcode ตัวเอง
+        #    ถ้าเป็น 'เจ้าหน้าที่ รพ. แม่ข่าย' หรือ 'ผู้ดูแลระบบ' จะเห็นใบเบิกรออนุมัติทั้งหมด
+        query_pending_requisitions_base = "SELECT COUNT(*) as count FROM requisitions WHERE status = 'รออนุมัติ'"
+        params_pending_req = []
+
+        if user_role == 'เจ้าหน้าที่ รพสต.' and user_hcode:
+            query_pending_requisitions_base += " AND requester_hcode = %s"
+            params_pending_req.append(user_hcode)
+        # สำหรับ 'เจ้าหน้าที่ รพ. แม่ข่าย' และ 'ผู้ดูแลระบบ' ไม่ต้อง filter hcode เพิ่มเติมในส่วนนี้
+        # (เพราะพวกเขาควรจะเห็นใบเบิกที่รอการอนุมัติจากทุก รพสต.)
+
+        pending_req_result = db_execute_query(query_pending_requisitions_base, tuple(params_pending_req) if params_pending_req else None, fetchone=True, cursor_to_use=cursor)
+        if pending_req_result:
+            summary_data["pending_requisitions"] = pending_req_result['count']
+
+        return jsonify(summary_data), 200
+
+    except Error as e:
+        print(f"Dashboard summary error: {e}")
+        return jsonify({"error": "เกิดข้อผิดพลาดในการดึงข้อมูลสรุป Dashboard"}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+@app.route('/api/dispense/upload_excel/preview', methods=['POST'])
+def dispense_upload_excel_preview():
+    if 'file' not in request.files:
+        return jsonify({"error": "ไม่พบไฟล์ที่อัปโหลด"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "ไม่ได้เลือกไฟล์"}), 400
+
+    hcode = request.form.get('hcode')
+    if not hcode:
+        return jsonify({"error": "กรุณาระบุ hcode"}), 400
+
+    preview_items = []
+    try:
+        # ใช้ BytesIO เพื่ออ่านไฟล์ใน memory โดยตรง
+        excel_data = pd.read_excel(BytesIO(file.read()), engine='openpyxl')
+        
+        required_columns = ['วันที่', 'รหัสยา', 'จำนวน']
+        for col in required_columns:
+            if col not in excel_data.columns:
+                return jsonify({"error": f"ไฟล์ Excel ต้องมีคอลัมน์: {', '.join(required_columns)}"}), 400
+
+        if excel_data.empty:
+            return jsonify({"error": "ไฟล์ Excel ไม่มีข้อมูล"}), 400
+
+        conn = get_db_connection()
+        if not conn: return jsonify({"error": "ไม่สามารถเชื่อมต่อฐานข้อมูลได้"}), 500
+        cursor = conn.cursor(dictionary=True)
+
+        for index, row in excel_data.iterrows():
+            row_num = index + 2
+            
+            # --- START: แก้ไขการจัดการวันที่ ---
+            dispense_date_from_excel = row['วันที่']
+            dispense_date_str_for_preview = ""
+            dispense_date_iso_for_logic = None
+
+            if isinstance(dispense_date_from_excel, datetime):
+                # ถ้า Pandas อ่านเป็น datetime object (มักจะเป็น ค.ศ.)
+                # แปลงเป็น พ.ศ. สำหรับแสดงผล และ ISO สำหรับ backend logic
+                dispense_date_str_for_preview = f"{dispense_date_from_excel.day:02d}/{dispense_date_from_excel.month:02d}/{dispense_date_from_excel.year + 543}"
+                dispense_date_iso_for_logic = dispense_date_from_excel.strftime('%Y-%m-%d')
+            else:
+                # ถ้าเป็น string, พยายามแปลงจาก "dd/mm/yyyy" (พ.ศ.)
+                dispense_date_str_for_preview = str(dispense_date_from_excel).strip()
+                dispense_date_iso_for_logic = thai_to_iso_date(dispense_date_str_for_preview)
+            # --- END: แก้ไขการจัดการวันที่ ---
+
+            item_preview = {
+                "row_num": row_num,
+                "dispense_date_str": dispense_date_str_for_preview, # ใช้ string ที่แปลงแล้วสำหรับแสดงผล
+                "dispense_date_iso": dispense_date_iso_for_logic,    # ใช้ ISO สำหรับการตรวจสอบ
+                "medicine_code": str(row['รหัสยา']).strip(),
+                "quantity_requested_str": str(row['จำนวน']).strip(),
+                "medicine_name": "N/A",
+                "unit": "N/A",
+                "available_lots": [],
+                "status": "รอตรวจสอบ",
+                "errors": []
+            }
+            
+            # Validate dispense_date_iso (ที่แปลงแล้ว)
+            if not item_preview["dispense_date_iso"]:
+                item_preview["errors"].append("รูปแบบวันที่จ่ายไม่ถูกต้อง (ต้องเป็น dd/mm/yyyy พ.ศ. หรือ YYYY-MM-DD ค.ศ.)")
+
+
+            # Validate quantity
+            try:
+                item_preview["quantity_requested"] = int(item_preview["quantity_requested_str"])
+                if item_preview["quantity_requested"] <= 0:
+                    item_preview["errors"].append("จำนวนต้องมากกว่า 0")
+            except ValueError:
+                item_preview["errors"].append("จำนวนต้องเป็นตัวเลข")
+
+            # Fetch medicine info and available lots
+            if not item_preview["errors"]:
+                medicine_info = db_execute_query(
+                    "SELECT id, generic_name, strength, unit FROM medicines WHERE medicine_code = %s AND hcode = %s AND is_active = TRUE",
+                    (item_preview["medicine_code"], hcode), fetchone=True, cursor_to_use=cursor
+                )
+                if medicine_info:
+                    item_preview["medicine_id"] = medicine_info['id']
+                    item_preview["medicine_name"] = f"{medicine_info['generic_name']} ({medicine_info['strength'] or 'N/A'})"
+                    item_preview["unit"] = medicine_info['unit']
+
+                    lots_query = "SELECT lot_number, expiry_date, quantity_on_hand FROM inventory WHERE medicine_id = %s AND hcode = %s AND quantity_on_hand > 0 ORDER BY expiry_date ASC, lot_number ASC;"
+                    available_lots_db = db_execute_query(lots_query, (medicine_info['id'], hcode), fetchall=True, cursor_to_use=cursor)
+                    if available_lots_db:
+                        for lot_db in available_lots_db:
+                            item_preview["available_lots"].append({
+                                "lot_number": lot_db["lot_number"],
+                                "expiry_date_iso": str(lot_db["expiry_date"]),
+                                "expiry_date_thai": iso_to_thai_date(lot_db["expiry_date"]),
+                                "quantity_on_hand": lot_db["quantity_on_hand"]
+                            })
+                        item_preview["status"] = "พร้อมให้เลือก Lot"
+                    else:
+                        item_preview["errors"].append(f"ไม่พบ Lot ที่มีในคลังสำหรับยา '{item_preview['medicine_code']}'")
+                else:
+                    item_preview["errors"].append(f"ไม่พบรหัสยา '{item_preview['medicine_code']}' หรือยาไม่ถูกเปิดใช้งาน สำหรับหน่วยบริการ {hcode}")
+            
+            if item_preview["errors"]:
+                 item_preview["status"] = "มีข้อผิดพลาด"
+
+            preview_items.append(item_preview)
+
+        return jsonify({"preview_items": preview_items}), 200
+
+    except Exception as e:
+        # Log the full error for debugging
+        app.logger.error(f"Error processing Excel preview: {str(e)}", exc_info=True)
+        return jsonify({"error": f"เกิดข้อผิดพลาดในการประมวลผลไฟล์ Excel: {str(e)}"}), 500
+    finally:
+        if 'conn' in locals() and conn and conn.is_connected():
+            if 'cursor' in locals() and cursor:
+                cursor.close()
+            conn.close()
+
+
+@app.route('/api/dispense/process_excel_dispense', methods=['POST'])
+def process_excel_dispense():
+    data = request.get_json()
+    if not data or not data.get('dispense_items') or not data.get('dispenser_id') or not data.get('hcode'):
+        return jsonify({"error": "ข้อมูลไม่ครบถ้วนสำหรับการยืนยันการตัดจ่าย"}), 400
+
+    items_to_dispense = data['dispense_items']
+    dispenser_id = data['dispenser_id']
+    hcode = data['hcode']
+    dispense_type_header = data.get('dispense_type_header', 'ผู้ป่วยนอก (Excel)')
+    remarks_header = data.get('remarks_header', 'ตัดจ่ายยาจากไฟล์ Excel ที่ยืนยันแล้ว')
+
+    conn = get_db_connection()
+    if not conn: return jsonify({"error": "ไม่สามารถเชื่อมต่อฐานข้อมูลได้"}), 500
+    cursor = conn.cursor(dictionary=True)
+    
+    processed_count = 0
+    failed_items_details = []
+
+    try:
+        conn.start_transaction()
+
+        # --- START: แก้ไขการจัดการ overall_dispense_date_iso ---
+        overall_dispense_date_iso_str = None
+        if items_to_dispense and items_to_dispense[0].get('dispense_date_iso'):
+            temp_date_str = items_to_dispense[0]['dispense_date_iso']
+            try:
+                # Validate YYYY-MM-DD format
+                datetime.strptime(temp_date_str, '%Y-%m-%d')
+                overall_dispense_date_iso_str = temp_date_str
+            except (ValueError, TypeError):
+                app.logger.warning(f"Invalid overall_dispense_date_iso from frontend: {temp_date_str}, will use current date for record.")
+                overall_dispense_date_iso_str = datetime.now().strftime('%Y-%m-%d')
+        else:
+            overall_dispense_date_iso_str = datetime.now().strftime('%Y-%m-%d')
+        # --- END: แก้ไขการจัดการ overall_dispense_date_iso ---
+
+        current_date_str_disp = datetime.now().strftime('%y%m%d')
+        cursor.execute("SELECT dispense_record_number FROM dispense_records WHERE hcode = %s AND dispense_record_number LIKE %s ORDER BY id DESC LIMIT 1", (hcode, f"DSPEXC-{hcode}-{current_date_str_disp}-%"))
+        last_disp_rec = cursor.fetchone()
+        next_disp_seq = 1
+        if last_disp_rec:
+            try: next_disp_seq = int(last_disp_rec['dispense_record_number'].split('-')[-1]) + 1
+            except (IndexError, ValueError): pass
+        dispense_record_number = f"DSPEXC-{hcode}-{current_date_str_disp}-{next_disp_seq:03d}"
+
+        sql_dispense_record = "INSERT INTO dispense_records (hcode, dispense_record_number, dispense_date, dispenser_id, remarks, dispense_type) VALUES (%s, %s, %s, %s, %s, %s)"
+        cursor.execute(sql_dispense_record, (hcode, dispense_record_number, overall_dispense_date_iso_str, dispenser_id, remarks_header, dispense_type_header)) # ใช้ overall_dispense_date_iso_str ที่ตรวจสอบแล้ว
+        dispense_record_id = cursor.lastrowid
+
+        for item_data in items_to_dispense:
+            medicine_id = item_data.get('medicine_id')
+            lot_number = item_data.get('lot_number')
+            expiry_date_iso_str = item_data.get('expiry_date_iso') # ควรเป็น YYYY-MM-DD
+            quantity_dispensed = item_data.get('quantity_dispensed')
+            
+            # --- START: แก้ไขการจัดการ item_dispense_date_iso และ transaction_datetime_for_db ---
+            item_dispense_date_iso_str_from_frontend = item_data.get('dispense_date_iso')
+            final_item_dispense_date_iso = overall_dispense_date_iso_str # Default to overall
+
+            if item_dispense_date_iso_str_from_frontend:
+                try:
+                    datetime.strptime(item_dispense_date_iso_str_from_frontend, '%Y-%m-%d')
+                    final_item_dispense_date_iso = item_dispense_date_iso_str_from_frontend
+                except (ValueError, TypeError):
+                    app.logger.warning(f"Invalid item_dispense_date_iso for med_code {item_data.get('medicine_code', 'N/A')}: {item_dispense_date_iso_str_from_frontend}. Using overall record date: {overall_dispense_date_iso_str}")
+            
+            # สร้าง transaction_datetime โดยใช้ final_item_dispense_date_iso ที่ผ่านการตรวจสอบหรือ default
+            transaction_datetime_for_db = f"{final_item_dispense_date_iso} {datetime.now().strftime('%H:%M:%S')}"
+            # --- END: แก้ไขการจัดการ ---
+
+            if not all([medicine_id, lot_number, expiry_date_iso_str, quantity_dispensed, final_item_dispense_date_iso]): # ตรวจสอบ final_item_dispense_date_iso ด้วย
+                failed_items_details.append({"medicine_code": item_data.get("medicine_code", "N/A"), "error": "ข้อมูลไม่ครบถ้วน (ยา, Lot, วันหมดอายุ, จำนวน, หรือวันที่จ่าย)"})
+                continue
+            
+            try:
+                quantity_dispensed = int(quantity_dispensed)
+                if quantity_dispensed <= 0:
+                    failed_items_details.append({"medicine_code": item_data.get("medicine_code"), "error": "จำนวนจ่ายต้องมากกว่า 0"})
+                    continue
+            except ValueError:
+                failed_items_details.append({"medicine_code": item_data.get("medicine_code"), "error": "จำนวนจ่ายไม่ถูกต้อง"})
+                continue
+            
+            # ตรวจสอบ expiry_date_iso_str อีกครั้ง (ควรจะเป็น YYYY-MM-DD ที่ถูกต้อง)
+            try:
+                datetime.strptime(expiry_date_iso_str, '%Y-%m-%d')
+            except (ValueError, TypeError):
+                failed_items_details.append({"medicine_code": item_data.get("medicine_code"), "lot": lot_number, "error": f"รูปแบบวันหมดอายุ ({expiry_date_iso_str}) ของ Lot ไม่ถูกต้อง"})
+                continue
+
+
+            total_stock_before_item_txn = get_total_medicine_stock(hcode, medicine_id, cursor)
+            inventory_item = db_execute_query(
+                "SELECT id, quantity_on_hand FROM inventory WHERE hcode = %s AND medicine_id = %s AND lot_number = %s AND expiry_date = %s",
+                (hcode, medicine_id, lot_number, expiry_date_iso_str), fetchone=True, cursor_to_use=cursor
+            )
+
+            if not inventory_item or inventory_item['quantity_on_hand'] < quantity_dispensed:
+                failed_items_details.append({"medicine_code": item_data.get("medicine_code"), "lot": lot_number, "error": "สต็อกไม่เพียงพอสำหรับ Lot ที่เลือก หรือ Lot ไม่พบ"})
+                continue
+            
+            inventory_id = inventory_item['id']
+            cursor.execute("UPDATE inventory SET quantity_on_hand = quantity_on_hand - %s WHERE id = %s", (quantity_dispensed, inventory_id))
+            
+            total_stock_after_item_txn = get_total_medicine_stock(hcode, medicine_id, cursor)
+
+            cursor.execute(
+                "INSERT INTO dispense_items (dispense_record_id, medicine_id, lot_number, expiry_date, quantity_dispensed) VALUES (%s, %s, %s, %s, %s)",
+                (dispense_record_id, medicine_id, lot_number, expiry_date_iso_str, quantity_dispensed)
+            )
+            cursor.execute(
+                "INSERT INTO inventory_transactions (hcode, medicine_id, lot_number, expiry_date, transaction_type, quantity_change, quantity_before_transaction, quantity_after_transaction, reference_document_id, user_id, remarks, transaction_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (hcode, medicine_id, lot_number, expiry_date_iso_str, dispense_type_header, -quantity_dispensed, total_stock_before_item_txn, total_stock_after_item_txn, dispense_record_number, dispenser_id, f"Excel Row {item_data.get('row_num', 'N/A')}", transaction_datetime_for_db) # ใช้ transaction_datetime_for_db
+            )
+            processed_count += 1
+        
+        if failed_items_details and processed_count == 0:
+            conn.rollback()
+            return jsonify({"error": "การตัดจ่ายยาทุกรายการจาก Excel ล้มเหลว", "details": failed_items_details}), 400
+        
+        conn.commit()
+        message = f"บันทึกการตัดจ่ายยาจาก Excel สำเร็จ {processed_count} รายการ."
+        if failed_items_details:
+            message += f" พบข้อผิดพลาด {len(failed_items_details)} รายการ."
+        
+        return jsonify({
+            "message": message, 
+            "dispense_record_id": dispense_record_id, 
+            "dispense_record_number": dispense_record_number,
+            "processed_count": processed_count,
+            "failed_details": failed_items_details
+        }), 201 if not failed_items_details else 207
+
+    except Error as e_db:
+        if conn: conn.rollback()
+        app.logger.error(f"Database error during Excel dispense processing: {str(e_db)}", exc_info=True)
+        return jsonify({"error": f"Database error: {str(e_db)}"}), 500
+    except Exception as e_main:
+        if conn: conn.rollback()
+        app.logger.error(f"General error during Excel dispense processing: {str(e_main)}", exc_info=True)
+        return jsonify({"error": f"General error: {str(e_main)}"}), 500
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
 
 
 if __name__ == '__main__':

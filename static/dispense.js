@@ -1,5 +1,6 @@
 // dispense.js
-
+// Global variable to store previewed items for confirmation
+let excelDispensePreviewData = null;
 /**
  * Loads and displays the history of dispensed medicine records for the current user's hcode.
  */
@@ -309,48 +310,290 @@ async function fetchAndPopulateLotsForDispense(medicineId, itemRowElement, hcode
     }
 }
 
-function uploadDispenseExcel() {
-    // ... (โค้ดเดิม, ตรวจสอบ currentUser.hcode ก่อนอัปโหลด) ...
+async function uploadDispenseExcel() {
     const fileInput = document.getElementById('excelUploadDispense');
-    if (!fileInput) {
-        console.error("Excel upload input for dispense not found.");
+    if (!fileInput || fileInput.files.length === 0) {
+        Swal.fire('ข้อผิดพลาด', 'กรุณาเลือกไฟล์ Excel ที่ต้องการอัปโหลด', 'error');
         return;
     }
-    if (!currentUser || !currentUser.hcode) {
+
+    if (!currentUser || !currentUser.hcode || !currentUser.id) {
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถอัปโหลดได้: ไม่พบข้อมูลผู้ใช้หรือรหัสหน่วยบริการ', 'error');
         return;
     }
 
-    if (fileInput.files.length > 0) {
-        const fileName = fileInput.files[0].name;
-        Swal.fire({
-            title: 'ยืนยันการอัปโหลดไฟล์ตัดจ่ายยา',
-            text: `คุณต้องการอัปโหลดไฟล์ ${fileName} เพื่อตัดจ่ายยาสำหรับหน่วยบริการ ${currentUser.hcode} ใช่หรือไม่?`,
-            icon: 'info',
-            showCancelButton: true,
-            confirmButtonColor: '#3b82f6', 
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: 'อัปโหลด',
-            cancelButtonText: 'ยกเลิก'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({
-                    title: 'กำลังอัปโหลด...',
-                    text: 'กรุณารอสักครู่ (ยังไม่เชื่อมต่อ Backend)',
-                    allowOutsideClick: false,
-                    didOpen: () => { Swal.showLoading(); }
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('hcode', currentUser.hcode); // ส่ง hcode ไปด้วย
+
+    Swal.fire({
+        title: 'กำลังอ่านไฟล์ Excel...',
+        text: 'กรุณารอสักครู่ ระบบกำลังประมวลผลไฟล์เพื่อแสดงตัวอย่าง',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/dispense/upload_excel/preview`, { // เรียก API preview
+            method: 'POST',
+            body: formData,
+        });
+
+        const result = await response.json();
+        Swal.close(); // ปิด loading swal
+
+        if (!response.ok) {
+            Swal.fire('เกิดข้อผิดพลาด', result.error || 'ไม่สามารถอ่านข้อมูลจากไฟล์ Excel ได้', 'error');
+            fileInput.value = ''; // Clear file input
+            return;
+        }
+
+        if (result.preview_items && result.preview_items.length > 0) {
+            excelDispensePreviewData = result.preview_items; // เก็บข้อมูลไว้สำหรับยืนยัน
+            showDispenseExcelPreviewModal(result.preview_items);
+        } else {
+            Swal.fire('ไม่พบข้อมูล', 'ไม่พบรายการยาที่สามารถประมวลผลได้ในไฟล์ Excel', 'info');
+            fileInput.value = ''; // Clear file input
+        }
+
+    } catch (error) {
+        Swal.close();
+        console.error('Error previewing Excel file:', error);
+        Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์หรือประมวลผลไฟล์ตัวอย่างได้', 'error');
+        fileInput.value = ''; // Clear file input
+    }
+}
+
+function showDispenseExcelPreviewModal(previewItems) {
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    if (!modalTitle || !modalBody) return;
+
+    modalTitle.textContent = 'ตรวจสอบรายการตัดจ่ายยาจาก Excel';
+    let itemsHtml = `
+        <div class="text-sm mb-4">
+            <p>กรุณาตรวจสอบรายการด้านล่าง และเลือก Lot Number สำหรับแต่ละรายการที่ "พร้อมให้เลือก Lot" หากข้อมูลถูกต้อง กด "ยืนยันการตัดจ่าย"</p>
+            <p class="text-red-600">รายการที่มีข้อผิดพลาดจะไม่ถูกนำไปประมวลผล</p>
+        </div>
+        <table class="custom-table text-xs sm:text-sm w-full">
+            <thead>
+                <tr>
+                    <th>แถวที่</th>
+                    <th>วันที่จ่าย</th>
+                    <th>รหัสยา</th>
+                    <th>ชื่อยา</th>
+                    <th>จำนวน</th>
+                    <th>เลือก Lot</th>
+                    <th>วันหมดอายุ (Lot)</th>
+                    <th>สถานะ/ข้อผิดพลาด</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    previewItems.forEach((item, index) => {
+        let lotSelectorHtml = '<span class="text-gray-400">-</span>';
+        if (item.status === "พร้อมให้เลือก Lot" && item.available_lots && item.available_lots.length > 0) {
+            lotSelectorHtml = `<select id="excel-lot-selector-${index}" class="input-field !p-1 !text-xs !mb-0" data-row-index="${index}" onchange="updateLotExpiryForExcelPreview(this, ${index})">
+                                <option value="">-- เลือก Lot --</option>`;
+            item.available_lots.forEach(lot => {
+                lotSelectorHtml += `<option value="${lot.lot_number}" data-exp-iso="${lot.expiry_date_iso}" data-exp-thai="${lot.expiry_date_thai}" data-qty="${lot.quantity_on_hand}">Lot: ${lot.lot_number} (หมดอายุ: ${lot.expiry_date_thai}, เหลือ: ${lot.quantity_on_hand})</option>`;
+            });
+            lotSelectorHtml += `</select>`;
+        } else if (item.available_lots && item.available_lots.length === 0 && item.status !== "มีข้อผิดพลาด") {
+            lotSelectorHtml = '<span class="text-orange-500">ไม่พบ Lot</span>';
+        }
+
+        const errorMessages = item.errors.join('<br>');
+        const statusClass = item.errors.length > 0 ? 'text-red-500' : (item.status === "พร้อมให้เลือก Lot" ? 'text-green-600' : 'text-gray-500');
+
+        itemsHtml += `
+            <tr data-item-index="${index}" class="${item.errors.length > 0 ? 'bg-red-50' : (item.status === "พร้อมให้เลือก Lot" ? '' : 'bg-gray-50')}">
+                <td class="text-center">${item.row_num}</td>
+                <td><input type="text" id="excel-dispense-date-${index}" class="input-field !p-1 !text-xs !mb-0 thai-date-formatter" value="${item.dispense_date_str}" ${item.errors.length > 0 ? 'disabled' : ''}></td>
+                <td>${item.medicine_code}</td>
+                <td>${item.medicine_name}</td>
+                <td><input type="number" id="excel-quantity-${index}" class="input-field !p-1 !text-xs w-16 !mb-0" value="${item.quantity_requested_str}" min="1" ${item.errors.length > 0 ? 'disabled' : ''}></td>
+                <td>${lotSelectorHtml}</td>
+                <td><input type="text" id="excel-expiry-date-${index}" class="input-field !p-1 !text-xs w-28 !mb-0 bg-gray-100" readonly></td>
+                <td class="${statusClass}">${item.errors.length > 0 ? errorMessages : item.status}</td>
+            </tr>`;
+    });
+
+    itemsHtml += `</tbody></table>`;
+    modalBody.innerHTML = `
+        <form id="confirmDispenseExcelForm">
+            ${itemsHtml}
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('formModal'); document.getElementById('excelUploadDispense').value = ''; excelDispensePreviewData = null;">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">ยืนยันการตัดจ่าย</button>
+            </div>
+        </form>
+    `;
+    openModal('formModal');
+
+    // Add event listeners for thai-date-formatters in the modal
+    document.querySelectorAll(`#formModal .thai-date-formatter`).forEach(el => {
+        if (typeof autoFormatThaiDateInput === 'function') {
+            el.addEventListener('input', autoFormatThaiDateInput);
+        }
+    });
+
+
+    document.getElementById('confirmDispenseExcelForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        confirmAndProcessExcelDispense();
+    });
+}
+
+function updateLotExpiryForExcelPreview(selectElement, rowIndex) {
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const expiryDateInput = document.getElementById(`excel-expiry-date-${rowIndex}`);
+    if (expiryDateInput) {
+        expiryDateInput.value = selectedOption.dataset.expThai || '';
+    }
+}
+
+async function confirmAndProcessExcelDispense() {
+    if (!excelDispensePreviewData || !currentUser) {
+        Swal.fire('ข้อผิดพลาด', 'ไม่มีข้อมูลตัวอย่างสำหรับการยืนยัน หรือไม่พบข้อมูลผู้ใช้', 'error');
+        return;
+    }
+
+    const itemsToSubmit = [];
+    let hasMissingLotSelection = false;
+
+    excelDispensePreviewData.forEach((originalItem, index) => {
+        if (originalItem.errors && originalItem.errors.length > 0) {
+            return; // Skip items with initial errors
+        }
+        if (originalItem.status !== "พร้อมให้เลือก Lot") { // Skip if not ready for lot selection (e.g., "ไม่พบ Lot")
+            return;
+        }
+
+        const lotSelector = document.getElementById(`excel-lot-selector-${index}`);
+        const quantityInput = document.getElementById(`excel-quantity-${index}`);
+        const dateInput = document.getElementById(`excel-dispense-date-${index}`);
+
+
+        if (lotSelector && quantityInput && dateInput) {
+            const selectedLotOption = lotSelector.options[lotSelector.selectedIndex];
+            const finalQuantity = parseInt(quantityInput.value);
+            const finalDateStr = dateInput.value;
+            const finalDateIso = thai_to_iso_date_frontend(finalDateStr);
+
+
+            if (!selectedLotOption || !selectedLotOption.value) {
+                hasMissingLotSelection = true;
+                // Highlight or mark this row as needing lot selection
+                const rowElement = document.querySelector(`tr[data-item-index="${index}"]`);
+                if (rowElement) rowElement.classList.add('border-2', 'border-red-500');
+                return;
+            }
+             if (!finalDateIso) {
+                Swal.fire('ข้อผิดพลาด', `รูปแบบวันที่ไม่ถูกต้องสำหรับรายการยา ${originalItem.medicine_code} แถวที่ ${originalItem.row_num}`, 'error');
+                hasMissingLotSelection = true; // Use this flag to stop processing
+                return;
+            }
+             if (isNaN(finalQuantity) || finalQuantity <= 0) {
+                Swal.fire('ข้อผิดพลาด', `จำนวนจ่ายไม่ถูกต้องสำหรับรายการยา ${originalItem.medicine_code} แถวที่ ${originalItem.row_num}`, 'error');
+                hasMissingLotSelection = true; // Use this flag to stop processing
+                return;
+            }
+
+
+            if (selectedLotOption.dataset.qty && finalQuantity > parseInt(selectedLotOption.dataset.qty)) {
+                 Swal.fire('ข้อผิดพลาด', `จำนวนจ่าย (${finalQuantity}) สำหรับยา ${originalItem.medicine_code} Lot ${selectedLotOption.value} เกินกว่าจำนวนคงเหลือ (${selectedLotOption.dataset.qty})`, 'error');
+                 hasMissingLotSelection = true; // Use this flag to stop processing
+                 return;
+            }
+
+
+            itemsToSubmit.push({
+                row_num: originalItem.row_num,
+                medicine_id: originalItem.medicine_id,
+                medicine_code: originalItem.medicine_code, // for error reporting if needed
+                lot_number: selectedLotOption.value,
+                expiry_date_iso: selectedLotOption.dataset.expIso,
+                quantity_dispensed: finalQuantity,
+                dispense_date_iso: finalDateIso //ใช้วันที่จาก input field ของแต่ละแถว
+            });
+        }
+    });
+
+    if (hasMissingLotSelection) {
+        Swal.fire('ข้อมูลไม่ครบถ้วน', 'กรุณาเลือก Lot Number และตรวจสอบจำนวน/วันที่ สำหรับทุกรายการที่พร้อมให้เลือก Lot และไม่มีข้อผิดพลาด', 'warning');
+        return;
+    }
+
+    if (itemsToSubmit.length === 0) {
+        Swal.fire('ไม่มีรายการ', 'ไม่มีรายการยาที่พร้อมสำหรับการตัดจ่าย (อาจมีข้อผิดพลาดหรือยังไม่ได้เลือก Lot)', 'info');
+        closeModal('formModal');
+        document.getElementById('excelUploadDispense').value = '';
+        excelDispensePreviewData = null;
+        return;
+    }
+
+    Swal.fire({
+        title: 'ยืนยันการตัดจ่ายยา',
+        text: `คุณต้องการยืนยันการตัดจ่ายยาทั้งหมด ${itemsToSubmit.length} รายการที่เลือกใช่หรือไม่?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'ยืนยัน',
+        cancelButtonText: 'ยกเลิก',
+        allowOutsideClick: () => !Swal.isLoading(),
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'กำลังบันทึกการตัดจ่าย...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            try {
+                const payload = {
+                    dispenser_id: currentUser.id,
+                    hcode: currentUser.hcode,
+                    // สามารถเพิ่ม dispense_type_header และ remarks_header ที่นี่ได้ หากต้องการให้ผู้ใช้ระบุข้อมูลรวม
+                    dispense_items: itemsToSubmit
+                };
+                const response = await fetch(`${API_BASE_URL}/dispense/process_excel_dispense`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
                 });
-                setTimeout(() => { 
-                    Swal.fire('อัปโหลดสำเร็จ!', `ไฟล์ ${fileName} ได้รับการประมวลผลเพื่อตัดจ่ายยาแล้ว (จำลอง).`, 'success');
-                    fileInput.value = ''; 
+                const responseData = await response.json();
+
+                if (response.ok || response.status === 207) {
+                    let swalIcon = 'success';
+                    let swalTitle = responseData.message || 'การตัดจ่ายยาจาก Excel สำเร็จ';
+                    let swalHtml = `ประมวลผลสำเร็จ: ${responseData.processed_count || 0} รายการ.<br>เอกสารตัดจ่ายเลขที่: <b>${responseData.dispense_record_number || 'N/A'}</b>`;
+
+                    if (responseData.failed_details && responseData.failed_details.length > 0) {
+                        swalIcon = responseData.processed_count > 0 ? 'warning' : 'error';
+                        swalTitle = responseData.processed_count > 0 ? 'การตัดจ่ายสำเร็จบางส่วน!' : 'การตัดจ่ายล้มเหลว!';
+                        swalHtml += `<br><br><b>พบข้อผิดพลาด ${responseData.failed_details.length} รายการที่ไม่ถูกบันทึก:</b><br><div style="max-height: 150px; overflow-y: auto; text-align: left; font-size: 0.9em; margin-top: 10px; padding: 5px; border: 1px solid #ddd; background-color: #f9f9f9;">`;
+                        responseData.failed_details.forEach(fail => {
+                            swalHtml += `ยา ${fail.medicine_code || 'N/A'} (Lot: ${fail.lot || 'N/A'}): ${fail.error}<br>`;
+                        });
+                        swalHtml += `</div>`;
+                    }
+                    Swal.fire({icon: swalIcon, title: swalTitle, html: swalHtml});
                     if (typeof loadAndDisplayDispenseHistory === 'function') loadAndDisplayDispenseHistory();
                     if (typeof loadAndDisplayInventorySummary === 'function') loadAndDisplayInventorySummary();
-                }, 2000);
+                } else {
+                    Swal.fire('เกิดข้อผิดพลาด', responseData.error || 'ไม่สามารถบันทึกการตัดจ่ายยาจาก Excel ได้', 'error');
+                }
+            } catch (error) {
+                console.error('Error confirming excel dispense:', error);
+                Swal.fire('เกิดข้อผิดพลาด', 'การเชื่อมต่อล้มเหลว หรือเกิดข้อผิดพลาดในการยืนยัน', 'error');
+            } finally {
+                closeModal('formModal');
+                document.getElementById('excelUploadDispense').value = '';
+                excelDispensePreviewData = null;
             }
-        });
-    } else {
-        Swal.fire('ข้อผิดพลาด', 'กรุณาเลือกไฟล์ Excel ที่ต้องการอัปโหลด', 'error');
-    }
+        }
+    });
 }
 
 async function viewDispenseDetails(recordId, recordHeaderDetails) { 

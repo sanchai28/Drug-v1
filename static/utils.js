@@ -61,6 +61,22 @@ function parseThaiDateStringToDate(thaiDateString) {
 }
 
 /**
+ * Converts a dd/mm/yyyy (Buddhist Era) string to an ISO date string (YYYY-MM-DD).
+ * @param {string} thaiDateString - The Thai date string (dd/mm/yyyy BE).
+ * @returns {string|null} ISO date string (YYYY-MM-DD) or null if format is invalid.
+ */
+function thai_to_iso_date_frontend(thaiDateString) {
+    const dateObject = parseThaiDateStringToDate(thaiDateString);
+    if (dateObject) {
+        const year = dateObject.getFullYear();
+        const month = String(dateObject.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObject.getDate()).padStart(2, '0');
+        return `<span class="math-inline">\{year\}\-</span>{month}-${day}`;
+    }
+    return null;
+}
+
+/**
  * Converts an ISO date string (YYYY-MM-DD) or a Date object to a Thai date string (dd/mm/yyyy BE).
  * @param {string|Date|null} isoOrDateObject - The ISO date string or Date object.
  * @returns {string} Formatted Thai date string or '-'.

@@ -704,6 +704,7 @@ def get_dispense_records():
             dr.dispense_type,
             dr.remarks,
             dr.hcode, -- Include hcode of the dispense record
+            dr.status,
             (SELECT COUNT(*) FROM dispense_items di WHERE di.dispense_record_id = dr.id) as item_count
         FROM dispense_records dr
         JOIN users u ON dr.dispenser_id = u.id

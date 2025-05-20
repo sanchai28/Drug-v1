@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เข้าสู่ระบบ - ระบบคลังยา รพสต.</title>
+    <title>เข้าสู่ระบบ - ระบบคลังยา</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11,16 +11,51 @@
         body {
             font-family: 'Sarabun', sans-serif;
         }
+
+        /* Keyframes for the gradient color scrolling animation */
+        @keyframes gradient-scroll {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* Keyframes for the gradient bouncing/pulsing animation */
+        @keyframes gradient-bounce {
+            0%, 100% {
+                background-size: 200% 200%; /* Standard size */
+            }
+            50% {
+                background-size: 220% 220%; /* Slightly larger to create a "bounce" or "pulse" effect */
+            }
+        }
+
+        /* Utility class to apply both animations */
+        .animate-gradient-bounce {
+            background-size: 200% 200%; /* Initial background size, important for both animations */
+            /* Apply both animations:
+               - gradient-scroll: 15 seconds, smooth ease-in-out, infinite loop for color shifting
+               - gradient-bounce: 2.5 seconds, smooth ease-in-out, infinite loop for the bounce effect
+            */
+            animation: gradient-scroll 15s ease-in-out infinite, 
+                         gradient-bounce 2.5s ease-in-out infinite; 
+        }
     </style>
 </head>
-<body class="bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center min-h-screen">
+<body class="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 flex items-center justify-center min-h-screen animate-gradient-bounce">
     <div class="bg-white p-8 sm:p-10 rounded-xl shadow-2xl w-full max-w-md">
         <div class="text-center mb-8">
+
             <svg class="mx-auto h-12 w-auto text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12z" />
             </svg>
             <h2 class="mt-6 text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
-                ระบบบริหารจัดการคลังยา รพสต.
+                ระบบบริหารจัดการคลังยา
             </h2>
             <p class="mt-2 text-sm text-gray-600">กรุณาเข้าสู่ระบบเพื่อใช้งาน</p>
         </div>
@@ -36,7 +71,7 @@
             <div class="mb-6">
                 <div class="flex items-center justify-between">
                     <label for="password" class="block text-sm font-medium leading-6 text-gray-900">รหัสผ่าน</label>
-                    </div>
+                </div>
                 <div class="mt-2">
                     <input id="password" name="password" type="password" autocomplete="current-password" required
                            class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6">
@@ -45,7 +80,7 @@
 
             <div>
                 <button type="submit"
-                        class="flex w-full justify-center rounded-md bg-blue-600 px-3 py-2.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors duration-150">
+                        class="flex w-full justify-center rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-semibold leading-6 text-white shadow-lg hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white transform transition-all duration-150 ease-in-out hover:scale-105 active:scale-95">
                     เข้าสู่ระบบ
                 </button>
             </div>

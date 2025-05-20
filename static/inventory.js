@@ -166,7 +166,7 @@ async function fetchAndDisplayInventoryHistory(medicineId) {
                             <th>Exp. Date</th>
                             <th class="text-center">รับ</th> 
                             <th class="text-center">จ่าย</th> 
-                            <th class="text-center">ยอดคงเหลือรวม (ยานี้)</th>
+                            <th class="text-center">ยอดคงเหลือ</th>
                             <th>ผู้ทำรายการ</th>
                             <th>หมายเหตุ/อ้างอิง</th>
                         </tr>

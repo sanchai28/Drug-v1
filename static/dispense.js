@@ -613,21 +613,21 @@ async function viewDispenseDetails(recordId, recordHeaderDetails) {
 
     modalTitle.textContent = `รายละเอียดการตัดจ่ายยา: ${recordHeaderDetails.dispense_record_number || `DSP-${recordId}`}`;
     modalBody.innerHTML = `
-        <div class="space-y-3 mb-4">
+            <div class="space-y-3 mb-4">
             <p><strong>เลขที่เอกสาร:</strong> ${recordHeaderDetails.dispense_record_number || `DSP-${recordId}`}</p>
             <p><strong>วันที่จ่าย:</strong> ${recordHeaderDetails.dispense_date}</p> 
             <p><strong>ผู้จ่ายยา:</strong> ${recordHeaderDetails.dispenser_name}</p>
             <p><strong>ประเภทการจ่าย:</strong> ${recordHeaderDetails.dispense_type || '-'}</p>
             <p><strong>จ่ายจากหน่วยบริการ:</strong> ${recordHeaderDetails.hcode || currentUser.hcode || 'N/A'}</p>
             <p><strong>หมายเหตุเอกสาร:</strong> ${recordHeaderDetails.remarks || '-'}</p>
-            ${recordHeaderDetails.status === 'ยกเลิก' ? '<p class="text-red-600 font-semibold">สถานะ: เอกสารนี้ถูกยกเลิกแล้ว</p>' : ''}
+            <p id="dispenseStatusText" class="${recordHeaderDetails.status === 'ยกเลิก' ? 'text-red-600 font-semibold' : 'text-green-600 font-semibold'}">สถานะ: ${recordHeaderDetails.status === 'ยกเลิก' ? 'เอกสารนี้ถูกยกเลิกแล้ว' : 'ปกติ'}</p>
         </div>
         <p class="text-sm text-blue-600 my-3">หากต้องการแก้ไขรายการยา กรุณายกเลิกเอกสารนี้และสร้างใหม่</p>
         <h4 class="font-semibold mb-2 text-gray-700">รายการยาที่จ่าย:</h4>
         <div class="overflow-x-auto" id="dispenseDetailItemsContainerModal">
             <p class="text-center text-gray-400 py-3">กำลังโหลดรายการยา...</p>
         </div>
-        <div class="flex justify-end mt-6 space-x-3">
+        <div class="flex justify-end mt-6 space-x-3" id="dispenseModalActionButtons">
             ${recordHeaderDetails.status !== 'ยกเลิก' ? 
             `<button type="button" class="btn btn-warning" onclick='openEditDispenseRecordModal(${recordId})'>แก้ไขข้อมูลเอกสาร</button>
              <button type="button" class="btn btn-danger" onclick="confirmCancelDispenseRecord(${recordId}, '${recordHeaderDetails.dispense_record_number || `DSP-${recordId}`}')">ยกเลิกการตัดจ่าย</button>`
@@ -777,10 +777,15 @@ async function confirmCancelDispenseRecord(recordId, recordNumber) {
     }).then(async (result) => {
         if (result.isConfirmed) {
             try {
-                const responseData = await fetchData(`/dispense_records/${recordId}?user_id_context=${currentUser.id}`, { method: 'DELETE' });
+                // API_BASE_URL น่าจะถูกกำหนดไว้ใน utils.js หรือ main.js
+                const responseData = await fetchData(`/dispense_records/${recordId}?user_id_context=${currentUser.id}`, { method: 'DELETE' }); //
                 Swal.fire('สำเร็จ!', responseData.message || `เอกสารตัดจ่าย ${recordNumber || `ID ${recordId}`} ถูกยกเลิกแล้ว และมีการปรับปรุงสต็อก.`, 'success');
-                closeModal('formModal'); // Close details modal if open
-                if (typeof loadAndDisplayDispenseHistory === 'function') loadAndDisplayDispenseHistory();
+                
+                // --- แก้ไขตรงนี้ ---
+                closeModal('formModal'); // ปิด Modal ที่แสดงรายละเอียดไปเลย
+                // --- สิ้นสุดการแก้ไข ---
+
+                if (typeof loadAndDisplayDispenseHistory === 'function') loadAndDisplayDispenseHistory(); // โหลดประวัติใหม่
                 if (typeof loadAndDisplayInventorySummary === 'function') loadAndDisplayInventorySummary(); 
             } catch (error) { /* Handled by fetchData */ }
         }

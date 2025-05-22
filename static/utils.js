@@ -53,6 +53,7 @@ function parseThaiDateStringToDate(thaiDateString) {
     const christianYear = buddhistYear - 543;
 
     const date = new Date(christianYear, month, day);
+    // Check if the constructed date is valid and matches the input parts
     if (date.getFullYear() === christianYear && date.getMonth() === month && date.getDate() === day) {
         return date;
     }
@@ -62,6 +63,7 @@ function parseThaiDateStringToDate(thaiDateString) {
 
 /**
  * Converts a dd/mm/yyyy (Buddhist Era) string to an ISO date string (YYYY-MM-DD).
+ * This is the corrected function for frontend use.
  * @param {string} thaiDateString - The Thai date string (dd/mm/yyyy BE).
  * @returns {string|null} ISO date string (YYYY-MM-DD) or null if format is invalid.
  */
@@ -71,7 +73,7 @@ function thai_to_iso_date_frontend(thaiDateString) {
         const year = dateObject.getFullYear();
         const month = String(dateObject.getMonth() + 1).padStart(2, '0');
         const day = String(dateObject.getDate()).padStart(2, '0');
-        return `<span class="math-inline">\{year\}\-</span>{month}-${day}`;
+        return `${year}-${month}-${day}`; // Corrected: Return actual ISO date string
     }
     return null;
 }
@@ -86,17 +88,14 @@ function iso_to_thai_date(isoOrDateObject) {
     try {
         let date_obj;
         if (typeof isoOrDateObject === 'string') {
-            // Attempt to parse if it's a string, could be YYYY-MM-DD or full ISO timestamp
             date_obj = new Date(isoOrDateObject);
         } else if (isoOrDateObject instanceof Date) {
             date_obj = isoOrDateObject;
         } else {
-            // console.warn("iso_to_thai_date: Unrecognized input type", isoOrDateObject);
             return '-';
         }
 
         if (isNaN(date_obj.getTime())) {
-            // console.warn("iso_to_thai_date: Invalid date after parsing", isoOrDateObject);
             return '-';
         }
 
@@ -125,6 +124,7 @@ function autoFormatThaiDateInput(event) {
     if (value.length > 4) formattedValue += '/' + value.substring(4, 8); 
     
     input.value = formattedValue;
+    // Move cursor to the end
     input.setSelectionRange(formattedValue.length, formattedValue.length);
 }
 
@@ -134,20 +134,21 @@ function autoFormatThaiDateInput(event) {
  */
 function getFiscalYearRange() {
     const today = new Date();
-    const currentMonth = today.getMonth(); 
+    const currentMonth = today.getMonth(); // 0-11 for Jan-Dec
     const currentChristianYear = today.getFullYear();
     let fiscalYearStartChristianYear, fiscalYearEndChristianYear;
 
-    if (currentMonth >= 9) { 
+    // Fiscal year in Thailand typically starts October 1st
+    if (currentMonth >= 9) { // October (9) to December (11)
         fiscalYearStartChristianYear = currentChristianYear;
         fiscalYearEndChristianYear = currentChristianYear + 1;
-    } else { 
+    } else { // January (0) to September (8)
         fiscalYearStartChristianYear = currentChristianYear - 1;
         fiscalYearEndChristianYear = currentChristianYear;
     }
     
-    const fiscalYearStartDate = new Date(fiscalYearStartChristianYear, 9, 1); 
-    const fiscalYearEndDate = new Date(fiscalYearEndChristianYear, 8, 30); 
+    const fiscalYearStartDate = new Date(fiscalYearStartChristianYear, 9, 1); // Month is 0-indexed, so 9 is October
+    const fiscalYearEndDate = new Date(fiscalYearEndChristianYear, 8, 30); // Month is 0-indexed, so 8 is September
 
     return {
         startDate: formatDateToThaiString(fiscalYearStartDate),
@@ -174,14 +175,14 @@ async function fetchData(endpoint, options = {}) {
             }
             throw new Error(errorData.message || errorData.error || `HTTP error! Status: ${response.status}`);
         }
-        if (response.status === 204) { 
+        if (response.status === 204) { // No Content
             return null; 
         }
         return await response.json();
     } catch (error) {
         console.error(`Error fetching ${endpoint}:`, error);
         Swal.fire('เกิดข้อผิดพลาด!', `ไม่สามารถดำเนินการได้: ${error.message}`, 'error');
-        throw error; 
+        throw error; // Re-throw so calling function can also handle if needed
     }
 }
 
@@ -216,18 +217,21 @@ async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSel
             suggestionsBox.classList.add('hidden');
         }
         if(hiddenMedIdInput) hiddenMedIdInput.value = ''; 
+        // If a callback is provided, call it with null to indicate no selection or cleared input
         if (typeof callbackOnSelect === 'function') {
-            callbackOnSelect(null, itemRowElement, hcodeContext); 
+            callbackOnSelect(null, itemRowElement, hcodeContext); // Pass null for medicineId, and the row element
         } else if (typeof callbackOnSelect === 'string' && typeof window[callbackOnSelect] === 'function') {
             window[callbackOnSelect](null, itemRowElement, hcodeContext);
         }
         return;
     }
     
+    // Prevent re-triggering search on navigation keys if suggestions are already visible
     if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(event.key) && suggestionsBox && !suggestionsBox.classList.contains('hidden')) {
         return;
     }
 
+    // Ensure hcodeContext is available for non-admin users
     if (!hcodeContext && currentUser && currentUser.role !== 'ผู้ดูแลระบบ') {
         console.warn("Hcode context is required for medicine search for non-admin users.");
         if(suggestionsBox) {
@@ -239,32 +243,33 @@ async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSel
     }
     
     const searchParams = new URLSearchParams({ term: searchTerm });
-    if (hcodeContext) { 
+    if (hcodeContext) { // Only append hcode if it's actually provided
         searchParams.append('hcode', hcodeContext);
     }
 
     try {
         const medicines = await fetchData(`/medicines/search?${searchParams.toString()}`);
         
-        if(suggestionsBox) suggestionsBox.innerHTML = '';
+        if(suggestionsBox) suggestionsBox.innerHTML = ''; // Clear previous suggestions
         if (medicines && medicines.length > 0) {
-            medicines.forEach((med) => { 
+            medicines.forEach((med) => { // Removed index, not used here
                 const suggestionItem = document.createElement('div');
                 suggestionItem.classList.add('p-2', 'hover:bg-gray-100', 'cursor-pointer', 'text-sm', 'suggestion-item');
                 suggestionItem.textContent = `${med.medicine_code} - ${med.generic_name} (${med.strength || 'N/A'})`;
-                suggestionItem.dataset.medicineId = med.id; 
-                suggestionItem.dataset.medicineDisplayName = `${med.medicine_code} - ${med.generic_name}`;
+                suggestionItem.dataset.medicineId = med.id; // Store medicine ID
+                suggestionItem.dataset.medicineDisplayName = `${med.medicine_code} - ${med.generic_name}`; // Store display name
 
                 suggestionItem.addEventListener('click', () => {
-                    inputElement.value = suggestionItem.dataset.medicineDisplayName; 
-                    if(hiddenMedIdInput) hiddenMedIdInput.value = suggestionItem.dataset.medicineId; 
+                    inputElement.value = suggestionItem.dataset.medicineDisplayName; // Set input to display name
+                    if(hiddenMedIdInput) hiddenMedIdInput.value = suggestionItem.dataset.medicineId; // Set hidden input to actual ID
                     if(suggestionsBox) {
                         suggestionsBox.innerHTML = '';
                         suggestionsBox.classList.add('hidden');
                     }
-                    currentSuggestionIndex = -1;
+                    currentSuggestionIndex = -1; // Reset suggestion index
+                    // Execute callback if provided
                     if (typeof callbackOnSelect === 'function') {
-                        callbackOnSelect(med.id, itemRowElement, hcodeContext);
+                        callbackOnSelect(med.id, itemRowElement, hcodeContext); // Pass med.id and the row element
                     } else if (typeof callbackOnSelect === 'string' && typeof window[callbackOnSelect] === 'function') {
                         window[callbackOnSelect](med.id, itemRowElement, hcodeContext);
                     }
@@ -277,7 +282,8 @@ async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSel
                 suggestionsBox.innerHTML = '<div class="p-2 text-gray-500 text-sm">ไม่พบยาที่ค้นหา</div>';
                 suggestionsBox.classList.remove('hidden');
             }
-            if(hiddenMedIdInput) hiddenMedIdInput.value = ''; 
+            if(hiddenMedIdInput) hiddenMedIdInput.value = ''; // Clear hidden ID if no match
+            // Call callback with null if no medicines found
             if (typeof callbackOnSelect === 'function') {
                 callbackOnSelect(null, itemRowElement, hcodeContext);
             } else if (typeof callbackOnSelect === 'string' && typeof window[callbackOnSelect] === 'function') {
@@ -285,13 +291,15 @@ async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSel
             }
         }
     } catch (error) {
+        // console.error("Error searching medicines:", error); // Already logged by fetchData
         if(suggestionsBox) {
             suggestionsBox.innerHTML = '<div class="p-2 text-red-500 text-sm">เกิดข้อผิดพลาดในการค้นหา</div>';
-            if (!suggestionsBox.classList.contains('hidden')) { 
+            if (!suggestionsBox.classList.contains('hidden')) { // Ensure it's visible if error occurs mid-type
                  suggestionsBox.classList.remove('hidden');
             }
         }
          if(hiddenMedIdInput) hiddenMedIdInput.value = '';
+         // Call callback with null on error
          if (typeof callbackOnSelect === 'function') {
             callbackOnSelect(null, itemRowElement, hcodeContext);
         } else if (typeof callbackOnSelect === 'string' && typeof window[callbackOnSelect] === 'function') {
@@ -313,50 +321,55 @@ function navigateSuggestions(event, rowIndex) {
     if (!suggestionsBox) return;
     const items = suggestionsBox.querySelectorAll('.suggestion-item');
     
-    const hcodeCtx = inputElement.dataset.hcodeContext || (currentUser ? currentUser.hcode : '');
-    const callbackNameForNav = inputElement.dataset.medicineSelectCallback;
+    // Get hcode context and callback name from the input element's data attributes
+    const hcodeCtx = inputElement.dataset.hcodeContext || (currentUser ? currentUser.hcode : ''); // Fallback to current user's hcode
+    const callbackNameForNav = inputElement.dataset.medicineSelectCallback; // Get callback name
 
+    // If suggestions are hidden and user presses Down/Up, trigger a search to show them
     if (suggestionsBox.classList.contains('hidden') && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
-        handleMedicineSearch({ target: inputElement, type: 'input' }, rowIndex, hcodeCtx, callbackNameForNav); 
-        return; 
+        // Call handleMedicineSearch with the current input value to refresh/show suggestions
+        handleMedicineSearch({ target: inputElement, type: 'input' }, rowIndex, hcodeCtx, callbackNameForNav); // Pass hcode and callback
+        return; // Exit after triggering search
     }
     
     if (!items.length) return;
 
     if (event.key === 'ArrowDown') {
-        event.preventDefault(); 
+        event.preventDefault(); // Prevent cursor from moving in input
         currentSuggestionIndex++;
         if (currentSuggestionIndex >= items.length) {
-            currentSuggestionIndex = 0; 
+            currentSuggestionIndex = 0; // Wrap around to the first item
         }
     } else if (event.key === 'ArrowUp') {
-        event.preventDefault(); 
+        event.preventDefault(); // Prevent cursor from moving in input
         currentSuggestionIndex--;
         if (currentSuggestionIndex < 0) {
-            currentSuggestionIndex = items.length - 1; 
+            currentSuggestionIndex = items.length - 1; // Wrap around to the last item
         }
     } else if (event.key === 'Enter') {
-        event.preventDefault(); 
+        event.preventDefault(); // Prevent form submission if inside a form
         if (currentSuggestionIndex >= 0 && currentSuggestionIndex < items.length) {
-            items[currentSuggestionIndex].click(); 
+            items[currentSuggestionIndex].click(); // Simulate click on the active suggestion
         }
+        // Clear and hide suggestions after selection
         suggestionsBox.innerHTML = '';
         suggestionsBox.classList.add('hidden');
-        currentSuggestionIndex = -1;
-        return; 
+        currentSuggestionIndex = -1; // Reset index
+        return; // Important to return after Enter to prevent other actions
     } else if (event.key === 'Escape') {
         suggestionsBox.innerHTML = '';
         suggestionsBox.classList.add('hidden');
         currentSuggestionIndex = -1;
         return;
     } else {
-        return; 
+        return; // Do nothing for other keys
     }
 
+    // Highlight the current suggestion
     items.forEach((item, index) => {
         if (index === currentSuggestionIndex) {
             item.classList.add('suggestion-active');
-            item.scrollIntoView({ block: 'nearest' }); 
+            item.scrollIntoView({ block: 'nearest' }); // Ensure active item is visible
         } else {
             item.classList.remove('suggestion-active');
         }
@@ -379,23 +392,25 @@ function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames
         console.error(`Container with ID '${containerId}' not found.`);
         return;
     }
-    const itemCount = itemsContainer.children.length; 
+    const itemCount = itemsContainer.children.length; // Determine current number of items for unique naming
 
     const newItemRow = document.createElement('div');
-    newItemRow.className = 'flex items-center space-x-2 mb-2 animate-fadeIn relative'; 
+    newItemRow.className = 'flex items-center space-x-2 mb-2 animate-fadeIn relative'; // Added 'relative' for suggestion box positioning
     
     let fieldsHtml = '';
     for (let i = 0; i < fieldTypes.length; i++) {
         const type = fieldTypes[i]; 
         const placeholder = placeholders[i] || '';
+        // Construct unique name for array fields: items[0][medicine_id], items[1][medicine_id], etc.
         const name = arrayName ? `${arrayName}[${itemCount}][${baseFieldNames[i]}]` : baseFieldNames[i];
         
-        let fieldClass = 'input-field flex-grow !mb-0';
+        let fieldClass = 'input-field flex-grow !mb-0'; // Default class, !mb-0 to override default margin
         let inputValue = '';
         let extraClass = '';
         let inputHtml = '';
 
         if (type === 'medicine-search') {
+            // For medicine search, we need a visible input for display and a hidden input for ID
             const displayName = arrayName ? `${arrayName}[${itemCount}][medicine_display_name]` : 'medicine_display_name';
             const callbackString = medicineSelectCallbackName ? `'${medicineSelectCallbackName}'` : 'null';
             inputHtml = `
@@ -415,18 +430,19 @@ function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames
                 </div>
             `;
         } else if (type === 'lot-select') {
-            fieldClass = 'input-field w-48 !mb-0 lot-number-select';
+            fieldClass = 'input-field w-48 !mb-0 lot-number-select'; // Specific width for lot select
             inputHtml = `<select name="${name}" class="${fieldClass}" required disabled><option value="">-- เลือกยาก่อน --</option></select>`;
         } else if (type === 'expiry-display') {
-            fieldClass = 'input-field w-32 !mb-0 dispense-expiry-date thai-date-formatter'; 
+            fieldClass = 'input-field w-32 !mb-0 dispense-expiry-date thai-date-formatter'; // Specific width and readonly for expiry display
             inputHtml = `<input type="text" placeholder="${placeholder}" class="${fieldClass}" name="${name}" readonly required>`;
         }
-        else { 
-            if (type === 'number') fieldClass = 'input-field w-24 !mb-0';
+        // Add other field types as needed (e.g., 'unit-display')
+        else { // Default input field
+            if (type === 'number') fieldClass = 'input-field w-24 !mb-0'; // Specific width for number
             if (type === 'date-thai') { 
-                 fieldClass = 'input-field w-40 !mb-0';
-                 inputValue = `value="${getCurrentThaiDateString()}"`; 
-                 extraClass = 'thai-date-formatter';
+                 fieldClass = 'input-field w-40 !mb-0'; // Specific width for Thai date
+                 inputValue = `value="${getCurrentThaiDateString()}"`; // Default to current date
+                 extraClass = 'thai-date-formatter'; // Class for auto-formatting
             }
             inputHtml = `<input type="${type === 'date-thai' ? 'text' : type}" placeholder="${placeholder}" class="${fieldClass} ${extraClass}" name="${name}" ${type === 'number' ? 'min="0"' : ''} ${inputValue} required>`;
         }
@@ -441,21 +457,22 @@ function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames
     `;
     itemsContainer.appendChild(newItemRow);
 
+    // Add event listener for lot selection changing expiry date (if applicable to this row type)
     const newLotSelect = newItemRow.querySelector('.lot-number-select');
-    const newExpDateInput = newItemRow.querySelector('.dispense-expiry-date'); 
-    const newLotQtyDisplay = newItemRow.querySelector('.lot-quantity-display'); 
+    const newExpDateInput = newItemRow.querySelector('.dispense-expiry-date'); // Assuming this class is used for expiry date tied to lot
+    const newLotQtyDisplay = newItemRow.querySelector('.lot-quantity-display'); // Span to show qty for selected lot
 
-    if (newLotSelect && newExpDateInput) { 
+    if (newLotSelect && newExpDateInput) { // Only add if both elements exist for this row type
         newLotSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
             if (selectedOption && selectedOption.dataset.exp) {
-                newExpDateInput.value = selectedOption.dataset.exp; 
+                newExpDateInput.value = selectedOption.dataset.exp; // Set expiry date from selected lot's data-exp attribute
                 if (newLotQtyDisplay) {
                     newLotQtyDisplay.textContent = `(มี ${selectedOption.dataset.qty || 0})`;
                     newLotQtyDisplay.title = `มี ${selectedOption.dataset.qty || 0} ในสต็อก`;
                 }
             } else {
-                newExpDateInput.value = '';
+                newExpDateInput.value = ''; // Clear if no lot selected or no exp data
                 if (newLotQtyDisplay) {
                     newLotQtyDisplay.textContent = '';
                     newLotQtyDisplay.title = '';

@@ -318,19 +318,20 @@ async function openApproveRequisitionModal(requisitionId, requisitionNumber) {
             validItems.forEach((item, index) => {
                 const quantityToApprove = item.quantity_requested; 
                 const approvedLot = item.approved_lot_number || '';
-                const approvedExp = item.approved_expiry_date || getCurrentThaiDateString();
+                const approvedExp = item.approved_expiry_date ? iso_to_thai_date(item.approved_expiry_date) : getCurrentThaiDateString();
+
 
                 itemsHtml += `
                     <tr data-requisition-item-id="${item.requisition_item_id}">
                         <td>${item.generic_name || 'N/A'} (${item.strength || 'N/A'})</td>
                         <td class="text-center">${item.quantity_requested}</td>
-                        <td><input type="number" name="items[${index}][quantity_approved]" class="input-field !p-1.5 text-sm w-20 !mb-0" value="${quantityToApprove}" min="0" max=""></td>
+                        <td><input type="number" name="items[${index}][quantity_approved]" class="input-field !p-1.5 text-sm w-20 !mb-0" value="${quantityToApprove}" min="0" max="${item.quantity_requested}"></td>
                         <td><input type="text" name="items[${index}][approved_lot_number]" class="input-field !p-1.5 text-sm w-28 !mb-0" placeholder="P12345" value="${approvedLot}"></td>
                         <td><input type="text" name="items[${index}][approved_expiry_date]" class="input-field !p-1.5 text-sm w-36 !mb-0 thai-date-formatter" placeholder="dd/mm/yyyy" value="${approvedExp}"></td>
                         <td><input type="text" name="items[${index}][reason_for_change_or_rejection]" class="input-field !p-1.5 text-sm !mb-0" placeholder="เหตุผล (ถ้ามี)" value="${item.reason_for_change_or_rejection || ''}"></td>
                         <td>
                             <select name="items[${index}][item_approval_status]" class="input-field !p-1.5 text-sm !mb-0">
-                                <option value="อนุมัติ" ${item.item_approval_status === 'อนุมัติ' || !item.item_approval_status ? 'selected' : ''}>อนุมัติ</option>
+                                <option value="อนุมัติ" ${item.item_approval_status === 'อนุมัติ' || !item.item_approval_status || item.item_approval_status === 'รออนุมัติ' ? 'selected' : ''}>อนุมัติ</option>
                                 <option value="แก้ไขจำนวน" ${item.item_approval_status === 'แก้ไขจำนวน' ? 'selected' : ''}>แก้ไขจำนวน</option>
                                 <option value="ปฏิเสธ" ${item.item_approval_status === 'ปฏิเสธ' ? 'selected' : ''}>ปฏิเสธ</option>
                             </select>
@@ -358,22 +359,32 @@ async function openApproveRequisitionModal(requisitionId, requisitionNumber) {
                     </table>
                 </div>
                  <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" class="btn btn-info mr-auto" onclick="handlePrintRequisition(${requisitionId}, '${requisitionNumber}')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-printer-fill mr-2" viewBox="0 0 16 16"><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2z"/><path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4z"/></svg>
+                        พิมพ์ใบเบิก
+                    </button>
                     <button type="button" class="btn btn-secondary" onclick="closeModal('formModal')">ยกเลิก</button>
                     <button type="submit" class="btn btn-primary">ยืนยันการอนุมัติ/ดำเนินการ</button>
                 </div>
             </form>
         `;
         
+        document.querySelectorAll('#approveRequisitionItemsTableBody .thai-date-formatter').forEach(el => {
+            if (typeof autoFormatThaiDateInput === 'function') {
+                el.addEventListener('input', autoFormatThaiDateInput);
+            }
+        });
+
         document.getElementById('approveRequisitionForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const approvalData = {
-                // requisition_id is in the URL for the endpoint
                 approved_by_id: currentUser.id, 
-                approver_hcode: currentUser.hcode, // hcode of the user performing the approval
+                approver_hcode: currentUser.hcode, 
                 items: []
             };
 
             const itemRows = document.querySelectorAll('#approveRequisitionItemsTableBody tr');
+            let formIsValid = true;
             itemRows.forEach((row) => { 
                 const reqItemId = row.dataset.requisitionItemId;
                 if (!reqItemId) return; 
@@ -385,16 +396,53 @@ async function openApproveRequisitionModal(requisitionId, requisitionNumber) {
                 const statusSelect = row.querySelector(`select[name*="[item_approval_status]"]`);
                 
                 if (qtyApprovedInput && statusSelect) { 
+                    const qtyApproved = parseInt(qtyApprovedInput.value);
+                    const itemStatus = statusSelect.value;
+                    let approvedExpDateISO = null;
+
+                    if (itemStatus === 'อนุมัติ' || itemStatus === 'แก้ไขจำนวน') {
+                        if (!lotInput.value.trim()) {
+                            Swal.fire('ข้อมูลไม่ครบถ้วน', `กรุณาระบุ Lot Number สำหรับรายการยาที่อนุมัติ: ${row.cells[0].textContent}`, 'warning');
+                            lotInput.focus();
+                            formIsValid = false;
+                            return;
+                        }
+                        if (!expDateInput.value.trim()) {
+                            Swal.fire('ข้อมูลไม่ครบถ้วน', `กรุณาระบุวันหมดอายุสำหรับรายการยาที่อนุมัติ: ${row.cells[0].textContent}`, 'warning');
+                            expDateInput.focus();
+                            formIsValid = false;
+                            return;
+                        }
+                        approvedExpDateISO = thai_to_iso_date_frontend(expDateInput.value); //
+                        if (!approvedExpDateISO) {
+                             Swal.fire('ข้อมูลไม่ถูกต้อง', `รูปแบบวันหมดอายุไม่ถูกต้องสำหรับรายการยา: ${row.cells[0].textContent}`, 'warning');
+                             expDateInput.focus();
+                             formIsValid = false;
+                             return;
+                        }
+                        if (isNaN(qtyApproved) || qtyApproved < 0) {
+                             Swal.fire('ข้อมูลไม่ถูกต้อง', `จำนวนอนุมัติต้องเป็นตัวเลขมากกว่าหรือเท่ากับ 0 สำหรับ: ${row.cells[0].textContent}`, 'warning');
+                             qtyApprovedInput.focus();
+                             formIsValid = false;
+                             return;
+                        }
+                    }
+
+
                     approvalData.items.push({
                         requisition_item_id: parseInt(reqItemId),
-                        quantity_approved: parseInt(qtyApprovedInput.value),
+                        quantity_approved: qtyApproved,
                         approved_lot_number: lotInput ? lotInput.value : null,
-                        approved_expiry_date: expDateInput ? expDateInput.value : null, 
-                        item_approval_status: statusSelect.value,
+                        approved_expiry_date: approvedExpDateISO, 
+                        item_approval_status: itemStatus,
                         reason_for_change_or_rejection: reasonInput ? reasonInput.value : ''
                     });
                 }
             });
+            
+            if (!formIsValid) {
+                return; 
+            }
             
             console.log("Approval Data to send:", JSON.stringify(approvalData, null, 2));
             
@@ -446,7 +494,6 @@ async function cancelRequisition(requisitionId, requisitionNumber) {
             try {
                 const payload = {
                     user_id: currentUser.id, 
-                    // user_hcode: currentUser.hcode // Backend can derive hcode from user_id if needed for logging/permission
                 };
                 const responseData = await fetchData(`/requisitions/${requisitionId}/cancel`, { 
                     method: 'PUT', 
@@ -456,7 +503,7 @@ async function cancelRequisition(requisitionId, requisitionNumber) {
                 Swal.fire('สำเร็จ!', responseData.message || `ใบเบิก ${requisitionNumber} ถูกยกเลิกแล้ว.`, 'success');
                 
                 const modalTitle = document.getElementById('modalTitle');
-                if (modalTitle && modalTitle.textContent.includes(requisitionNumber)) { // Check if the details modal for this req is open
+                if (modalTitle && modalTitle.textContent.includes(requisitionNumber)) { 
                     closeModal('formModal');
                 }
 
@@ -467,4 +514,266 @@ async function cancelRequisition(requisitionId, requisitionNumber) {
             }
         }
     });
+}
+
+/**
+ * Handles the print requisition action by fetching data and generating HTML for printing.
+ * @param {number} requisitionId - The ID of the requisition to print.
+ * @param {string} requisitionNumber - The number of the requisition.
+ */
+async function handlePrintRequisition(requisitionId, requisitionNumber) {
+    console.log(`Attempting to print requisition ID: ${requisitionId}, Number: ${requisitionNumber}`);
+    
+    let requisitionHeader;
+    try {
+        requisitionHeader = await fetchData(`/requisitions/${requisitionId}`);
+        if (!requisitionHeader) {
+            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงข้อมูลใบเบิกสำหรับพิมพ์ได้', 'error');
+            return;
+        }
+    } catch (error) {
+        Swal.fire('ข้อผิดพลาด', `เกิดปัญหาในการดึงข้อมูลใบเบิก: ${error.message}`, 'error');
+        return;
+    }
+
+    let requisitionItems;
+    try {
+        requisitionItems = await fetchData(`/requisitions/${requisitionId}/items`);
+        if (!requisitionItems) {
+            Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงรายการยาในใบเบิกสำหรับพิมพ์ได้', 'error');
+            return;
+        }
+    } catch (error) {
+        Swal.fire('ข้อผิดพลาด', `เกิดปัญหาในการดึงรายการยา: ${error.message}`, 'error');
+        return;
+    }
+
+    // Date and Time for printing
+    const now = new Date();
+    const printDateTimeThai = `${formatDateToThaiString(now)} ${now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+
+
+    let printHtml = `
+        <html>
+        <head>
+            <title>ใบเบิกยาเลขที่ ${requisitionNumber}</title>
+            <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+            <style>
+                @page {
+                    size: A4;
+                    margin: 1.5cm 1.5cm 1cm 2cm; /* บน ขวา ล่าง ซ้าย */
+                }
+                body { 
+                    font-family: 'Sarabun', sans-serif; 
+                    margin: 0; 
+                    font-size: 11pt; /* Adjusted for A4 readability */
+                    line-height: 1.4;
+                }
+                .print-container { 
+                    width: 100%; 
+                }
+                .document-header {
+                    text-align: center;
+                    margin-bottom: 10px;
+                }
+                .document-header h2 {
+                    font-size: 16pt;
+                    font-weight: bold;
+                    margin: 0 0 2px 0;
+                }
+                .document-header h3 {
+                    font-size: 14pt;
+                    font-weight: normal;
+                    margin: 0 0 8px 0;
+                }
+                .info-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr; /* Two columns */
+                    gap: 0px 15px; /* No vertical gap, 15px horizontal */
+                    margin-bottom: 12px;
+                    font-size: 11pt;
+                }
+                .info-grid div {
+                    padding: 1px 0; /* Minimal vertical padding */
+                }
+                
+                table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-top: 10px; 
+                    font-size: 10pt; /* Smaller font for table content */
+                }
+                th, td { 
+                    border: 1px solid black; 
+                    padding: 4px 6px; 
+                    text-align: left; 
+                    vertical-align: top;
+                }
+                th { 
+                    background-color: #e9e9e9; 
+                    font-weight: bold;
+                    text-align: center;
+                }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                .col-seq { width: 4%; }
+                .col-code { width: 10%; }
+                .col-name { width: 26%; }
+                .col-strength { width: 10%; }
+                .col-unit { width: 7%; }
+                .col-qty-req { width: 7%; }
+                .col-qty-appr { width: 7%; }
+                .col-lot { width: 10%; }
+                .col-exp { width: 9%; }
+                .col-remark { width: 10%; }
+
+                .signature-section { 
+                    margin-top: 25px; /* Reduced margin */
+                    display: flex; 
+                    justify-content: space-between; /* Pushes boxes to edges */
+                    padding: 0 1cm; /* Add some padding to prevent boxes from touching edges */
+                    font-size: 11pt;
+                }
+                .signature-box { 
+                    width: 40%; /* Adjust width as needed */
+                    text-align: center; 
+                    margin-top: 20px; 
+                }
+                .signature-line { 
+                    display: inline-block;
+                    width: 70%; /* Make line shorter than box */
+                    border-bottom: 1px dotted black; 
+                    margin-bottom: 5px; 
+                    height: 20px; 
+                }
+                .signature-name {
+                     margin-top: 2px;
+                }
+                .signature-role {
+                     font-size: 10pt;
+                }
+
+                .footer { 
+                    position: fixed; /* Fixed position for footer */
+                    bottom: 0.5cm;   /* Position from bottom */
+                    left: 2cm;     /* Match left margin */
+                    right: 1.5cm;    /* Match right margin */
+                    text-align: right; 
+                    font-size: 9pt; 
+                    border-top: 1px solid #ccc;
+                    padding-top: 3px;
+                }
+                @media print {
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .no-print { display: none; }
+                    table { page-break-inside: auto; } /* Allow table to break across pages */
+                    tr    { page-break-inside: avoid; page-break-after: auto; } /* Try to keep rows together */
+                    thead { display: table-header-group; } /* Repeat table header on each page */
+                    tfoot { display: table-footer-group; } /* Repeat table footer on each page */
+                     .footer {
+                        position: fixed;
+                        bottom: 0.5cm;
+                        left: 2cm;
+                        right: 1.5cm;
+                     }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-container">
+                <div class="document-header">
+                    <h2>ใบเบิกยาและเวชภัณฑ์</h2>
+                    <h3>โรงพยาบาลส่งเสริมสุขภาพตำบล ${requisitionHeader.requester_hospital_name || '(ระบุชื่อ รพสต.)'}</h3>
+                </div>
+
+                <div class="info-grid">
+                    <div><strong>เลขที่ใบเบิก:</strong> ${requisitionNumber}</div>
+                    <div><strong>วันที่เบิก:</strong> ${requisitionHeader.requisition_date_thai || iso_to_thai_date(requisitionHeader.requisition_date)}</div>
+                    <div><strong>ผู้ขอเบิก:</strong> ${requisitionHeader.requester_name || 'N/A'}</div>
+                    <div><strong>รหัสหน่วยบริการ (ผู้ขอเบิก):</strong> ${requisitionHeader.requester_hcode || 'N/A'}</div>
+                    <div><strong>สถานะใบเบิก:</strong> ${requisitionHeader.status}</div>
+                    ${requisitionHeader.approved_by_name ? `<div><strong>ผู้อนุมัติ:</strong> ${requisitionHeader.approved_by_name}</div>` : '<div><strong>ผู้อนุมัติ:</strong> -</div>'}
+                    ${requisitionHeader.approval_date ? `<div><strong>วันที่อนุมัติ:</strong> ${iso_to_thai_date(requisitionHeader.approval_date)}</div>` : '<div><strong>วันที่อนุมัติ:</strong> -</div>'}
+                </div>
+                ${requisitionHeader.remarks ? `<div style="margin-bottom: 8px; font-size: 11pt;"><strong>หมายเหตุ (ใบเบิก):</strong> ${requisitionHeader.remarks}</div>` : ''}
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-seq">ลำดับ</th>
+                            <th class="col-code">รหัสยา</th>
+                            <th class="col-name">ชื่อยา/เวชภัณฑ์</th>
+                            <th class="col-strength">ความแรง</th>
+                            <th class="col-unit">หน่วย</th>
+                            <th class="col-qty-req">ขอเบิก</th>
+                            <th class="col-qty-appr">อนุมัติ</th>
+                            <th class="col-lot">Lot</th>
+                            <th class="col-exp">Exp.</th>
+                            <th class="col-remark">หมายเหตุ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    if (requisitionItems && requisitionItems.length > 0) {
+        requisitionItems.forEach((item, index) => {
+            printHtml += `
+                <tr>
+                    <td class="text-center">${index + 1}</td>
+                    <td>${item.medicine_code || '-'}</td>
+                    <td>${item.generic_name}</td>
+                    <td>${item.strength || '-'}</td>
+                    <td>${item.unit}</td>
+                    <td class="text-center">${item.quantity_requested}</td>
+                    <td class="text-center">${item.item_approval_status === 'ปฏิเสธ' ? 'ปฏิเสธ' : (item.quantity_approved !== null ? item.quantity_approved : '-')}</td>
+                    <td>${item.approved_lot_number || '-'}</td>
+                    <td>${item.approved_expiry_date ? iso_to_thai_date(item.approved_expiry_date) : '-'}</td>
+                    <td>${item.reason_for_change_or_rejection || (item.item_approval_status === 'ปฏิเสธ' && !item.reason_for_change_or_rejection ? 'ปฏิเสธรายการ' : '')}</td>
+                </tr>
+            `;
+        });
+    } else {
+        printHtml += `<tr><td colspan="10" class="text-center" style="padding: 10px;">-- ไม่มีรายการยา --</td></tr>`;
+    }
+
+    printHtml += `
+                    </tbody>
+                </table>
+
+                <div class="signature-section">
+                    <div class="signature-box">
+                        <div class="signature-line"></div>
+                        <div class="signature-name">( ${requisitionHeader.requester_name || '...................................'} )</div>
+                        <div class="signature-role">ผู้ขอเบิก</div>
+                    </div>
+                    <div class="signature-box">
+                        <div class="signature-line"></div>
+                        <div class="signature-name">( ${requisitionHeader.approved_by_name || '...................................'} )</div>
+                        <div class="signature-role">ผู้อนุมัติ</div>
+                    </div>
+                </div>
+                <div class="footer">
+                    พิมพ์เมื่อ: ${printDateTimeThai} โดย: ${currentUser.full_name || 'ผู้ใช้ระบบ'}
+                </div>
+            </div>
+            <script>
+                 window.onload = function() { 
+                     setTimeout(function() {
+                         window.print();
+                         window.onafterprint = function() { 
+                            //  window.close(); // Uncomment if you want the window to close automatically after printing/canceling
+                         };
+                     }, 250); // Delay to ensure content is rendered
+                 }
+            </script>
+        </body>
+        </html>
+    `;
+
+    const printWindow = window.open('', '_blank', 'width=800,height=600'); // Open with specific size for preview
+    printWindow.document.open();
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+    
+    // The window.print() is now called from within the new window's onload script.
 }

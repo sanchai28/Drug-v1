@@ -1,8 +1,18 @@
-// utils.js
+// static/utils.js
 
-// --- Global Constants ---
-const API_BASE_URL = 'http://127.0.0.1:5000/api'; // URL ของ Backend API
-let currentSuggestionIndex = -1; // Used by navigateSuggestions, keep it accessible
+// ใช้ค่าที่ถูก inject มาจาก server ถ้ามี, หรือใช้ค่า default หากไม่พบ
+// ค่า Default (http://127.0.0.1:5000/api) จะถูกใช้ถ้าไม่ได้รันผ่าน Flask หรือ Server ไม่ได้ส่งค่ามา
+const API_BASE_URL = typeof API_BASE_URL_FROM_SERVER !== 'undefined' && API_BASE_URL_FROM_SERVER
+                     ? API_BASE_URL_FROM_SERVER
+                     : 'http://127.0.0.1:5000/api';
+
+console.log('API_BASE_URL in utils.js is set to:', API_BASE_URL); // สำหรับ Debug
+
+// --- Global Variable for Suggestion Navigation ---
+// This needs to be accessible by both handleMedicineSearch and navigateSuggestions
+// Ideally, this state should be managed more locally to the component/input if possible,
+// but for now, a global or module-scoped variable is used.
+let currentSuggestionIndex = -1;
 
 // --- Helper Functions for Date Formatting ---
 /**
@@ -13,13 +23,13 @@ let currentSuggestionIndex = -1; // Used by navigateSuggestions, keep it accessi
 function formatDateToThaiString(dateInput) {
     if (!dateInput) return '-';
     const date = new Date(dateInput);
-    if (isNaN(date.getTime())) { 
+    if (isNaN(date.getTime())) {
         // console.warn("Invalid date input for formatDateToThaiString:", dateInput); // Can be noisy
-        return '-'; 
+        return '-';
     }
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear() + 543; 
+    const year = date.getFullYear() + 543;
     return `${day}/${month}/${year}`;
 }
 
@@ -38,15 +48,15 @@ function getCurrentThaiDateString() {
  */
 function parseThaiDateStringToDate(thaiDateString) {
     if (!thaiDateString || !/^\d{2}\/\d{2}\/\d{4}$/.test(thaiDateString)) {
-        // console.warn("Invalid Thai date string format for parsing:", thaiDateString); 
+        // console.warn("Invalid Thai date string format for parsing:", thaiDateString);
         return null;
     }
     const parts = thaiDateString.split('/');
     const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; 
+    const month = parseInt(parts[1], 10) - 1;
     const buddhistYear = parseInt(parts[2], 10);
 
-    if (buddhistYear < 2500) { 
+    if (buddhistYear < 2500) {
         // console.warn("Buddhist year seems too low for parsing:", buddhistYear);
         return null;
     }
@@ -116,13 +126,13 @@ function iso_to_thai_date(isoOrDateObject) {
  */
 function autoFormatThaiDateInput(event) {
     const input = event.target;
-    let value = input.value.replace(/\D/g, ''); 
+    let value = input.value.replace(/\D/g, '');
     let formattedValue = '';
 
-    if (value.length > 0) formattedValue = value.substring(0, 2); 
-    if (value.length > 2) formattedValue += '/' + value.substring(2, 4); 
-    if (value.length > 4) formattedValue += '/' + value.substring(4, 8); 
-    
+    if (value.length > 0) formattedValue = value.substring(0, 2);
+    if (value.length > 2) formattedValue += '/' + value.substring(2, 4);
+    if (value.length > 4) formattedValue += '/' + value.substring(4, 8);
+
     input.value = formattedValue;
     // Move cursor to the end
     input.setSelectionRange(formattedValue.length, formattedValue.length);
@@ -146,7 +156,7 @@ function getFiscalYearRange() {
         fiscalYearStartChristianYear = currentChristianYear - 1;
         fiscalYearEndChristianYear = currentChristianYear;
     }
-    
+
     const fiscalYearStartDate = new Date(fiscalYearStartChristianYear, 9, 1); // Month is 0-indexed, so 9 is October
     const fiscalYearEndDate = new Date(fiscalYearEndChristianYear, 8, 30); // Month is 0-indexed, so 8 is September
 
@@ -159,13 +169,14 @@ function getFiscalYearRange() {
 // --- API Interaction Helper ---
 /**
  * Generic function to fetch data from the API.
+ * Uses the globally defined API_BASE_URL.
  * @param {string} endpoint - The API endpoint (e.g., '/medicines').
  * @param {object} options - Fetch options (method, headers, body).
  * @returns {Promise<any>} The JSON response from the API.
  */
 async function fetchData(endpoint, options = {}) {
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, options); // ใช้ API_BASE_URL ที่กำหนดไว้ด้านบน
         if (!response.ok) {
             let errorData = { message: `HTTP error! Status: ${response.status}` };
             try {
@@ -176,11 +187,11 @@ async function fetchData(endpoint, options = {}) {
             throw new Error(errorData.message || errorData.error || `HTTP error! Status: ${response.status}`);
         }
         if (response.status === 204) { // No Content
-            return null; 
+            return null;
         }
         return await response.json();
     } catch (error) {
-        console.error(`Error fetching ${endpoint}:`, error);
+        console.error(`Error fetching ${API_BASE_URL}${endpoint}:`, error);
         Swal.fire('เกิดข้อผิดพลาด!', `ไม่สามารถดำเนินการได้: ${error.message}`, 'error');
         throw error; // Re-throw so calling function can also handle if needed
     }
@@ -198,7 +209,7 @@ async function fetchData(endpoint, options = {}) {
 async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSelect = null) {
     const inputElement = event.target;
     const searchTerm = inputElement.value;
-    const itemRowElement = inputElement.closest('.flex.items-center.space-x-2'); 
+    const itemRowElement = inputElement.closest('.flex.items-center.space-x-2');
     if (!itemRowElement) {
         console.error("Could not find parent item row for medicine search input.");
         return;
@@ -207,16 +218,16 @@ async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSel
     const hiddenMedIdInput = itemRowElement.querySelector(`input[name*="[medicine_id]"]`);
 
 
-    if (event.type === 'input') { 
-        currentSuggestionIndex = -1; 
+    if (event.type === 'input') {
+        currentSuggestionIndex = -1;
     }
 
-    if (searchTerm.length < 1 && event.type === 'input') { 
+    if (searchTerm.length < 1 && event.type === 'input') {
         if(suggestionsBox) {
             suggestionsBox.innerHTML = '';
             suggestionsBox.classList.add('hidden');
         }
-        if(hiddenMedIdInput) hiddenMedIdInput.value = ''; 
+        if(hiddenMedIdInput) hiddenMedIdInput.value = '';
         // If a callback is provided, call it with null to indicate no selection or cleared input
         if (typeof callbackOnSelect === 'function') {
             callbackOnSelect(null, itemRowElement, hcodeContext); // Pass null for medicineId, and the row element
@@ -225,7 +236,7 @@ async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSel
         }
         return;
     }
-    
+
     // Prevent re-triggering search on navigation keys if suggestions are already visible
     if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(event.key) && suggestionsBox && !suggestionsBox.classList.contains('hidden')) {
         return;
@@ -241,35 +252,34 @@ async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSel
         if(hiddenMedIdInput) hiddenMedIdInput.value = '';
         return;
     }
-    
+
     const searchParams = new URLSearchParams({ term: searchTerm });
     if (hcodeContext) { // Only append hcode if it's actually provided
         searchParams.append('hcode', hcodeContext);
     }
 
     try {
-        const medicines = await fetchData(`/medicines/search?${searchParams.toString()}`);
-        
+        const medicines = await fetchData(`/medicines/search?${searchParams.toString()}`); // fetchData uses the global API_BASE_URL
+
         if(suggestionsBox) suggestionsBox.innerHTML = ''; // Clear previous suggestions
         if (medicines && medicines.length > 0) {
-            medicines.forEach((med) => { // Removed index, not used here
+            medicines.forEach((med) => {
                 const suggestionItem = document.createElement('div');
                 suggestionItem.classList.add('p-2', 'hover:bg-gray-100', 'cursor-pointer', 'text-sm', 'suggestion-item');
                 suggestionItem.textContent = `${med.medicine_code} - ${med.generic_name} (${med.strength || 'N/A'})`;
-                suggestionItem.dataset.medicineId = med.id; // Store medicine ID
-                suggestionItem.dataset.medicineDisplayName = `${med.medicine_code} - ${med.generic_name}`; // Store display name
+                suggestionItem.dataset.medicineId = med.id;
+                suggestionItem.dataset.medicineDisplayName = `${med.medicine_code} - ${med.generic_name}`;
 
                 suggestionItem.addEventListener('click', () => {
-                    inputElement.value = suggestionItem.dataset.medicineDisplayName; // Set input to display name
-                    if(hiddenMedIdInput) hiddenMedIdInput.value = suggestionItem.dataset.medicineId; // Set hidden input to actual ID
+                    inputElement.value = suggestionItem.dataset.medicineDisplayName;
+                    if(hiddenMedIdInput) hiddenMedIdInput.value = suggestionItem.dataset.medicineId;
                     if(suggestionsBox) {
                         suggestionsBox.innerHTML = '';
                         suggestionsBox.classList.add('hidden');
                     }
-                    currentSuggestionIndex = -1; // Reset suggestion index
-                    // Execute callback if provided
+                    currentSuggestionIndex = -1;
                     if (typeof callbackOnSelect === 'function') {
-                        callbackOnSelect(med.id, itemRowElement, hcodeContext); // Pass med.id and the row element
+                        callbackOnSelect(med.id, itemRowElement, hcodeContext);
                     } else if (typeof callbackOnSelect === 'string' && typeof window[callbackOnSelect] === 'function') {
                         window[callbackOnSelect](med.id, itemRowElement, hcodeContext);
                     }
@@ -282,8 +292,7 @@ async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSel
                 suggestionsBox.innerHTML = '<div class="p-2 text-gray-500 text-sm">ไม่พบยาที่ค้นหา</div>';
                 suggestionsBox.classList.remove('hidden');
             }
-            if(hiddenMedIdInput) hiddenMedIdInput.value = ''; // Clear hidden ID if no match
-            // Call callback with null if no medicines found
+            if(hiddenMedIdInput) hiddenMedIdInput.value = '';
             if (typeof callbackOnSelect === 'function') {
                 callbackOnSelect(null, itemRowElement, hcodeContext);
             } else if (typeof callbackOnSelect === 'string' && typeof window[callbackOnSelect] === 'function') {
@@ -291,15 +300,13 @@ async function handleMedicineSearch(event, rowIndex, hcodeContext, callbackOnSel
             }
         }
     } catch (error) {
-        // console.error("Error searching medicines:", error); // Already logged by fetchData
         if(suggestionsBox) {
             suggestionsBox.innerHTML = '<div class="p-2 text-red-500 text-sm">เกิดข้อผิดพลาดในการค้นหา</div>';
-            if (!suggestionsBox.classList.contains('hidden')) { // Ensure it's visible if error occurs mid-type
+            if (!suggestionsBox.classList.contains('hidden')) {
                  suggestionsBox.classList.remove('hidden');
             }
         }
          if(hiddenMedIdInput) hiddenMedIdInput.value = '';
-         // Call callback with null on error
          if (typeof callbackOnSelect === 'function') {
             callbackOnSelect(null, itemRowElement, hcodeContext);
         } else if (typeof callbackOnSelect === 'string' && typeof window[callbackOnSelect] === 'function') {
@@ -320,56 +327,51 @@ function navigateSuggestions(event, rowIndex) {
     const suggestionsBox = itemRowElement.querySelector('.suggestions-box');
     if (!suggestionsBox) return;
     const items = suggestionsBox.querySelectorAll('.suggestion-item');
-    
-    // Get hcode context and callback name from the input element's data attributes
-    const hcodeCtx = inputElement.dataset.hcodeContext || (currentUser ? currentUser.hcode : ''); // Fallback to current user's hcode
-    const callbackNameForNav = inputElement.dataset.medicineSelectCallback; // Get callback name
 
-    // If suggestions are hidden and user presses Down/Up, trigger a search to show them
+    const hcodeCtx = inputElement.dataset.hcodeContext || (currentUser ? currentUser.hcode : '');
+    const callbackNameForNav = inputElement.dataset.medicineSelectCallback;
+
     if (suggestionsBox.classList.contains('hidden') && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
-        // Call handleMedicineSearch with the current input value to refresh/show suggestions
-        handleMedicineSearch({ target: inputElement, type: 'input' }, rowIndex, hcodeCtx, callbackNameForNav); // Pass hcode and callback
-        return; // Exit after triggering search
+        handleMedicineSearch({ target: inputElement, type: 'input' }, rowIndex, hcodeCtx, callbackNameForNav);
+        return;
     }
-    
+
     if (!items.length) return;
 
     if (event.key === 'ArrowDown') {
-        event.preventDefault(); // Prevent cursor from moving in input
+        event.preventDefault();
         currentSuggestionIndex++;
         if (currentSuggestionIndex >= items.length) {
-            currentSuggestionIndex = 0; // Wrap around to the first item
+            currentSuggestionIndex = 0;
         }
     } else if (event.key === 'ArrowUp') {
-        event.preventDefault(); // Prevent cursor from moving in input
+        event.preventDefault();
         currentSuggestionIndex--;
         if (currentSuggestionIndex < 0) {
-            currentSuggestionIndex = items.length - 1; // Wrap around to the last item
+            currentSuggestionIndex = items.length - 1;
         }
     } else if (event.key === 'Enter') {
-        event.preventDefault(); // Prevent form submission if inside a form
+        event.preventDefault();
         if (currentSuggestionIndex >= 0 && currentSuggestionIndex < items.length) {
-            items[currentSuggestionIndex].click(); // Simulate click on the active suggestion
+            items[currentSuggestionIndex].click();
         }
-        // Clear and hide suggestions after selection
         suggestionsBox.innerHTML = '';
         suggestionsBox.classList.add('hidden');
-        currentSuggestionIndex = -1; // Reset index
-        return; // Important to return after Enter to prevent other actions
+        currentSuggestionIndex = -1;
+        return;
     } else if (event.key === 'Escape') {
         suggestionsBox.innerHTML = '';
         suggestionsBox.classList.add('hidden');
         currentSuggestionIndex = -1;
         return;
     } else {
-        return; // Do nothing for other keys
+        return;
     }
 
-    // Highlight the current suggestion
     items.forEach((item, index) => {
         if (index === currentSuggestionIndex) {
             item.classList.add('suggestion-active');
-            item.scrollIntoView({ block: 'nearest' }); // Ensure active item is visible
+            item.scrollIntoView({ block: 'nearest' });
         } else {
             item.classList.remove('suggestion-active');
         }
@@ -392,33 +394,32 @@ function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames
         console.error(`Container with ID '${containerId}' not found.`);
         return;
     }
-    const itemCount = itemsContainer.children.length; // Determine current number of items for unique naming
+    const itemCount = itemsContainer.children.length;
 
     const newItemRow = document.createElement('div');
-    newItemRow.className = 'flex items-center space-x-2 mb-2 animate-fadeIn relative'; // Added 'relative' for suggestion box positioning
-    
+    newItemRow.className = 'flex items-center space-x-2 mb-2 animate-fadeIn relative';
+
     let fieldsHtml = '';
     for (let i = 0; i < fieldTypes.length; i++) {
-        const type = fieldTypes[i]; 
+        const type = fieldTypes[i];
         const placeholder = placeholders[i] || '';
-        // Construct unique name for array fields: items[0][medicine_id], items[1][medicine_id], etc.
         const name = arrayName ? `${arrayName}[${itemCount}][${baseFieldNames[i]}]` : baseFieldNames[i];
-        
-        let fieldClass = 'input-field flex-grow !mb-0'; // Default class, !mb-0 to override default margin
+
+        let fieldClass = 'input-field flex-grow !mb-0';
         let inputValue = '';
         let extraClass = '';
         let inputHtml = '';
 
         if (type === 'medicine-search') {
-            // For medicine search, we need a visible input for display and a hidden input for ID
             const displayName = arrayName ? `${arrayName}[${itemCount}][medicine_display_name]` : 'medicine_display_name';
             const callbackString = medicineSelectCallbackName ? `'${medicineSelectCallbackName}'` : 'null';
             inputHtml = `
-                <div class="relative flex-grow"> <input type="text" 
-                           placeholder="${placeholder}" 
-                           class="${fieldClass} medicine-search-input w-full" 
-                           name="${displayName}" 
-                           oninput="handleMedicineSearch(event, ${itemCount}, '${hcodeContextForSearch}', ${callbackString})" 
+                <div class="relative flex-grow">
+                    <input type="text"
+                           placeholder="${placeholder}"
+                           class="${fieldClass} medicine-search-input w-full"
+                           name="${displayName}"
+                           oninput="handleMedicineSearch(event, ${itemCount}, '${hcodeContextForSearch}', ${callbackString})"
                            onkeydown="navigateSuggestions(event, ${itemCount})"
                            data-hcode-context="${hcodeContextForSearch}"
                            data-medicine-select-callback="${medicineSelectCallbackName || ''}"
@@ -430,19 +431,18 @@ function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames
                 </div>
             `;
         } else if (type === 'lot-select') {
-            fieldClass = 'input-field w-48 !mb-0 lot-number-select'; // Specific width for lot select
+            fieldClass = 'input-field w-48 !mb-0 lot-number-select';
             inputHtml = `<select name="${name}" class="${fieldClass}" required disabled><option value="">-- เลือกยาก่อน --</option></select>`;
         } else if (type === 'expiry-display') {
-            fieldClass = 'input-field w-32 !mb-0 dispense-expiry-date thai-date-formatter'; // Specific width and readonly for expiry display
+            fieldClass = 'input-field w-32 !mb-0 dispense-expiry-date thai-date-formatter';
             inputHtml = `<input type="text" placeholder="${placeholder}" class="${fieldClass}" name="${name}" readonly required>`;
         }
-        // Add other field types as needed (e.g., 'unit-display')
-        else { // Default input field
-            if (type === 'number') fieldClass = 'input-field w-24 !mb-0'; // Specific width for number
-            if (type === 'date-thai') { 
-                 fieldClass = 'input-field w-40 !mb-0'; // Specific width for Thai date
-                 inputValue = `value="${getCurrentThaiDateString()}"`; // Default to current date
-                 extraClass = 'thai-date-formatter'; // Class for auto-formatting
+        else {
+            if (type === 'number') fieldClass = 'input-field w-24 !mb-0';
+            if (type === 'date-thai') {
+                 fieldClass = 'input-field w-40 !mb-0';
+                 inputValue = `value="${getCurrentThaiDateString()}"`;
+                 extraClass = 'thai-date-formatter';
             }
             inputHtml = `<input type="${type === 'date-thai' ? 'text' : type}" placeholder="${placeholder}" class="${fieldClass} ${extraClass}" name="${name}" ${type === 'number' ? 'min="0"' : ''} ${inputValue} required>`;
         }
@@ -457,22 +457,21 @@ function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames
     `;
     itemsContainer.appendChild(newItemRow);
 
-    // Add event listener for lot selection changing expiry date (if applicable to this row type)
     const newLotSelect = newItemRow.querySelector('.lot-number-select');
-    const newExpDateInput = newItemRow.querySelector('.dispense-expiry-date'); // Assuming this class is used for expiry date tied to lot
-    const newLotQtyDisplay = newItemRow.querySelector('.lot-quantity-display'); // Span to show qty for selected lot
+    const newExpDateInput = newItemRow.querySelector('.dispense-expiry-date');
+    const newLotQtyDisplay = newItemRow.querySelector('.lot-quantity-display');
 
-    if (newLotSelect && newExpDateInput) { // Only add if both elements exist for this row type
+    if (newLotSelect && newExpDateInput) {
         newLotSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
             if (selectedOption && selectedOption.dataset.exp) {
-                newExpDateInput.value = selectedOption.dataset.exp; // Set expiry date from selected lot's data-exp attribute
+                newExpDateInput.value = selectedOption.dataset.exp;
                 if (newLotQtyDisplay) {
                     newLotQtyDisplay.textContent = `(มี ${selectedOption.dataset.qty || 0})`;
                     newLotQtyDisplay.title = `มี ${selectedOption.dataset.qty || 0} ในสต็อก`;
                 }
             } else {
-                newExpDateInput.value = ''; // Clear if no lot selected or no exp data
+                newExpDateInput.value = '';
                 if (newLotQtyDisplay) {
                     newLotQtyDisplay.textContent = '';
                     newLotQtyDisplay.title = '';

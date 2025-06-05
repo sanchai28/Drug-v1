@@ -7,6 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- เพิ่มส่วนนี้เพื่อรับค่า API_BASE_URL จาก Server -->
+    <script>
+        const API_BASE_URL_FROM_SERVER = "{{ API_BASE_URL_FROM_SERVER | safe }}";
+    </script>
+
     <style>
         body {
             font-family: 'Sarabun', 'Inter', sans-serif;
@@ -155,18 +161,18 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            pointer-events: none; 
+            pointer-events: none;
         }
         .modal.active {
             opacity: 1;
-            pointer-events: auto; 
+            pointer-events: auto;
         }
         .modal-content {
             background-color: #fefefe;
             padding: 2rem;
             border: 1px solid #d1d5db;
             width: 90%;
-            max-width: 1200px; 
+            max-width: 1200px;
             border-radius: 0.75rem;
             box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
             transform: translateY(20px) scale(0.98);
@@ -178,7 +184,7 @@
         .modal.active .modal-content {
             transform: translateY(0) scale(1);
             opacity: 1;
-            margin: auto; 
+            margin: auto;
         }
         .close-button {
             color: #9ca3af;
@@ -254,6 +260,7 @@
     </header>
 
     <main class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <!-- Dashboard Content -->
         <div id="dashboard" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">ภาพรวมระบบ</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -273,6 +280,7 @@
             <p class="mt-6 text-gray-600">ยินดีต้อนรับเข้าสู่ระบบบริหารจัดการคลังยา รพสต. กรุณาเลือกเมนูการทำงานจากแท็บด้านบน</p>
         </div>
 
+        <!-- Medicine Master Management Content -->
         <div id="medicineMaster" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">การจัดการข้อมูลยา (Medicine Master Management)</h2>
             <button onclick="openAddMedicineModal()" class="btn btn-primary mb-4">
@@ -298,6 +306,7 @@
             </div>
         </div>
 
+        <!-- Inventory Management Content -->
         <div id="inventoryManagement" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">การจัดการคลังยา รพสต. (Roposo Inventory Management)</h2>
             <div class="overflow-x-auto">
@@ -318,6 +327,7 @@
             </div>
         </div>
 
+        <!-- Requisition Management Content -->
         <div id="requisitionManagement" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">การจัดการใบเบิกยา (Requisition Management - รพสต.)</h2>
             <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-3 mb-6 bg-gray-50 p-4 rounded-lg shadow-sm">
@@ -356,6 +366,7 @@
             </div>
         </div>
 
+        <!-- Requisition Approval Content -->
         <div id="requisitionApproval" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">การอนุมัติใบเบิกยา (Requisition Approval - รพ. แม่ข่าย)</h2>
              <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-3 mb-6 bg-gray-50 p-4 rounded-lg shadow-sm">
@@ -391,6 +402,7 @@
             </div>
         </div>
 
+        <!-- Goods Receiving Content -->
         <div id="goodsReceiving" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">การรับยาเข้าคลัง รพสต. (Goods Receiving)</h2>
             <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-3 mb-6 bg-gray-50 p-4 rounded-lg shadow-sm">
@@ -457,6 +469,7 @@
             </div>
         </div>
 
+        <!-- Dispense Medicine Content -->
         <div id="dispenseMedicine" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-6">การตัดจ่ายยา (Dispense Medicine)</h2>
             <div class="flex flex-col sm:flex-row items-end space-y-2 sm:space-y-0 sm:space-x-3 mb-6 bg-gray-50 p-4 rounded-lg shadow-sm">
@@ -475,7 +488,7 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div class="card p-4 bg-gray-50"> 
+                <div class="card p-4 bg-gray-50">
                     <h3 class="text-lg font-semibold text-gray-700 mb-3">1. ตัดจ่ายยา (กรอกข้อมูลเอง - FEFO)</h3>
                     <p class="text-sm text-gray-600 mb-4">บันทึกการจ่ายยา โดยระบบจะเลือก Lot และวันหมดอายุตามหลัก FEFO ให้อัตโนมัติ</p>
                     <button onclick="openManualDispenseModal()" class="btn btn-success w-full">
@@ -486,7 +499,7 @@
                         กรอกข้อมูลตัดจ่ายยา (FEFO)
                     </button>
                 </div>
-                <div class="card p-4 bg-gray-50"> 
+                <div class="card p-4 bg-gray-50">
                     <h3 class="text-lg font-semibold text-gray-700 mb-3">2. ตัดจ่ายยา (อัปโหลดไฟล์ Excel - FEFO)</h3>
                      <p class="text-sm text-gray-600 mb-2">นำเข้าข้อมูลการจ่ายยาจากไฟล์ Excel ระบบจะจ่ายตามหลัก FEFO</p>
                      <p class="text-xs text-gray-500 mb-1">คอลัมน์ที่ต้องมี: <code class="bg-gray-200 px-1 rounded">วันที่</code>, <code class="bg-gray-200 px-1 rounded">รหัสยา</code>, <code class="bg-gray-200 px-1 rounded">จำนวน</code></p>
@@ -521,6 +534,7 @@
             </div>
         </div>
 
+        <!-- Unit Service Management Content -->
         <div id="unitServiceManagement" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">การจัดการหน่วยบริการ (Unit Service Management)</h2>
             <button onclick="openAddUnitServiceModal()" class="btn btn-primary mb-4">
@@ -545,7 +559,7 @@
             </div>
         </div>
 
-
+        <!-- Admin Content -->
         <div id="admin" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">ผู้ดูแลระบบ (Admin)</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -575,11 +589,15 @@
                         </table>
                     </div>
                 </div>
+                <!-- Additional Admin sections can be added here -->
             </div>
         </div>
     </main>
 
-    <div id="formModal" class="modal"> <div class="modal-content"> <span class="close-button" onclick="closeModal('formModal')">&times;</span>
+    <!-- Modal Structure -->
+    <div id="formModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('formModal')">&times;</span>
             <h3 id="modalTitle" class="text-xl font-semibold text-gray-800 mb-4">แบบฟอร์ม</h3>
             <div id="modalBody">
                 <p>กำลังโหลดเนื้อหา...</p>
@@ -591,9 +609,10 @@
         ระบบบริหารจัดการคลังยา รพสต. &copy; 2025
     </footer>
 
+    <!-- JavaScript files - utils.js should be loaded first if other scripts depend on it -->
     <script src="/static/utils.js"></script>
-    <script src="/static/modal.js"></script> 
-    <script src="/static/tabs.js"></script> 
+    <script src="/static/modal.js"></script>
+    <script src="/static/tabs.js"></script>
     <script src="/static/medicines.js"></script>
     <script src="/static/inventory.js"></script>
     <script src="/static/requisitions.js"></script>
@@ -604,4 +623,3 @@
     <script src="/static/main.js"></script>
 </body>
 </html>
-

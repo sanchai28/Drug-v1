@@ -8,25 +8,31 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash 
 import pandas as pd
 from io import BytesIO
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+# Load environment variables from .env file
 app = Flask(__name__)
 CORS(app) 
-
+API_BASE_URL_FOR_CLIENT = os.getenv('API_BASE_URL_FOR_CLIENT', '/api')
 
 @app.route('/')
 @app.route('/index')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', API_BASE_URL_FROM_SERVER=API_BASE_URL_FOR_CLIENT)
 
 @app.route('/login')
 def login_page():
-    return render_template('login.html')
+    return render_template('login.html', API_BASE_URL_FROM_SERVER=API_BASE_URL_FOR_CLIENT)
 
 # --- Database Configuration ---
+# --- Database Configuration ---
 DB_CONFIG = {
-    'host': '127.0.0.1',
-    'user': 'sa',        
-    'password': 'sa',  
-    'database': 'shph_inventory_db' 
+    'host': os.getenv('DB_HOST'),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'database': os.getenv('DB_NAME')
 }
 
 # --- Database Helper Functions ---

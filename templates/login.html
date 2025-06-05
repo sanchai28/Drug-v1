@@ -7,6 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        const API_BASE_URL_FROM_SERVER = "{{ API_BASE_URL_FROM_SERVER | safe }}";
+    </script>
     <style>
         body {
             font-family: 'Sarabun', sans-serif;
@@ -38,19 +41,15 @@
         /* Utility class to apply both animations */
         .animate-gradient-bounce {
             background-size: 200% 200%; /* Initial background size, important for both animations */
-            /* Apply both animations:
-               - gradient-scroll: 15 seconds, smooth ease-in-out, infinite loop for color shifting
-               - gradient-bounce: 2.5 seconds, smooth ease-in-out, infinite loop for the bounce effect
-            */
-            animation: gradient-scroll 15s ease-in-out infinite, 
-                         gradient-bounce 2.5s ease-in-out infinite; 
+            animation: gradient-scroll 15s ease-in-out infinite,
+                         gradient-bounce 2.5s ease-in-out infinite;
         }
     </style>
 </head>
 <body class="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 flex items-center justify-center min-h-screen animate-gradient-bounce">
     <div class="bg-white p-8 sm:p-10 rounded-xl shadow-2xl w-full max-w-md">
         <div class="text-center mb-8">
-
+            <!-- SVG Icon and Title -->
             <svg class="mx-auto h-12 w-auto text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12z" />
             </svg>
@@ -88,79 +87,9 @@
         <p id="loginError" class="mt-4 text-center text-sm text-red-600"></p>
     </div>
 
-    <script>
-        // login.js (ส่วนของ login.html)
-        const API_BASE_URL_LOGIN = 'http://127.0.0.1:5000/api'; // Ensure this matches your Flask API URL
-
-        document.getElementById('loginForm').addEventListener('submit', async function(event) {
-            event.preventDefault();
-            const usernameInput = document.getElementById('username');
-            const passwordInput = document.getElementById('password');
-            const loginErrorElement = document.getElementById('loginError');
-            
-            loginErrorElement.textContent = ''; // Clear previous errors
-
-            const username = usernameInput.value;
-            const password = passwordInput.value;
-
-            if (!username || !password) {
-                loginErrorElement.textContent = 'กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน';
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE_URL_LOGIN}/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ username, password }),
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    // Login successful
-                    console.log('Login successful:', data);
-                    // Store user info (excluding password) and token (if any)
-                    localStorage.setItem('currentUser', JSON.stringify({
-                        id: data.user.id,
-                        username: data.user.username,
-                        full_name: data.user.full_name,
-                        role: data.user.role,
-                        hcode: data.user.hcode 
-                        // token: data.access_token // If using JWT
-                    }));
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'เข้าสู่ระบบสำเร็จ!',
-                        text: `ยินดีต้อนรับ, ${data.user.full_name}`,
-                        timer: 1500,
-                        showConfirmButton: false
-                    }).then(() => {
-                        window.location.href = '/index'; // Redirect to the main application page
-                    });
-
-                } else {
-                    // Login failed
-                    loginErrorElement.textContent = data.error || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง';
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'เข้าสู่ระบบไม่สำเร็จ',
-                        text: data.error || 'ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง',
-                    });
-                }
-            } catch (error) {
-                console.error('Login request failed:', error);
-                loginErrorElement.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์';
-                 Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง',
-                });
-            }
-        });
-    </script>
+    <!-- เรียกใช้ไฟล์ JavaScript ภายนอก -->
+    <!-- utils.js ต้องถูกโหลดก่อน login.js เนื่องจาก login.js ใช้ API_BASE_URL จาก utils.js -->
+    <script src="/static/utils.js"></script>
+    <script src="/static/login.js"></script> 
 </body>
 </html>

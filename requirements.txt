@@ -1,0 +1,7 @@
+Flask
+Flask-CORS
+mysql-connector-python
+Werkzeug
+pandas
+openpyxl
+python-dotenv

@@ -1079,7 +1079,7 @@ def delete_dispense_record(record_id):
                 app.logger.debug(f"Attempting to delete inventory_transaction for dispense with query: {delete_inventory_transaction_query} and params: {tuple(delete_txn_params)}")
                 cursor.execute(delete_inventory_transaction_query, tuple(delete_txn_params))
                 if cursor.rowcount == 0:
-                    app.logger.warning(f"No inventory_transaction found to delete for dispense_item_id {item['dispense_item_id']} with criteria. Stock was still adjusted.")
+                    app.logger.warning(f"No inventory_transaction found to delete for dispense_item_id {item['dispense_item_id']} with criteria. Stock was still adjusted (or attempted).")
                 else:
                     app.logger.info(f"Deleted {cursor.rowcount} inventory_transaction(s) for dispense_item_id {item['dispense_item_id']}.")
 
@@ -1281,7 +1281,7 @@ def process_excel_dispense():
                 app.logger.warning(f"Invalid overall_dispense_date_iso from first sorted item: {temp_date_str}, using current date.")
         
         current_date_str_disp = datetime.now().strftime('%y%m%d')
-        cursor.execute("SELECT dispense_record_number FROM dispense_records WHERE hcode = %s AND dispense_record_number LIKE %s ORDER BY id DESC LIMIT 1", (hcode, f"DSPEXC-{hcode}-{current_date_str_disp}-%"))
+        cursor.execute("SELECT dispense_record_number FROM dispense_records WHERE hcode = %s AND dispense_record_number LIKE %s ORDER BY id DESC LIMIT 1", (hcode, f"DSPEXC-{hcode}-{current_date_str_disp}-%",))
         last_disp_rec = cursor.fetchone()
         next_disp_seq = 1
         if last_disp_rec:
@@ -1622,7 +1622,7 @@ def delete_manual_goods_received_voucher(voucher_id):
                     "transaction_type = %s" 
                 ]
                 delete_txn_params = [
-                    voucher['hcode'], medicine_id, lot_number, expiry_date_iso,
+                    voucher['hcode'], medicine_id, lot_number, expiry_date_iso, 
                     voucher['voucher_number'] or f"RECV{voucher_id}", 
                     quantity_to_reverse, 
                     'รับเข้า-ตรง' 
@@ -2136,4 +2136,4 @@ def get_dashboard_summary():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', port=8123, debug=True)

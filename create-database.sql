@@ -180,10 +180,7 @@ CREATE TABLE IF NOT EXISTS `dispense_records` (
   `dispenser_id` INT NOT NULL COMMENT 'รหัสผู้จ่ายยา (อ้างอิง users.id)',
   `dispense_type` ENUM('ผู้ป่วยนอก', 'ผู้ป่วยใน', 'หน่วยงานภายใน', 'อื่นๆ') DEFAULT 'ผู้ป่วยนอก' COMMENT 'ประเภทการจ่าย',
   `remarks` TEXT COMMENT 'หมายเหตุเพิ่มเติม',
-<<<<<<< HEAD
   `status` TEXT COMMENT 'สถานะการตัดจ่าย',
-=======
->>>>>>> 163c8d0e3e403626eaf6ae612786ae64fd893129
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (`hcode`) REFERENCES `unitservice`(`hcode`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -230,8 +227,12 @@ CREATE TABLE IF NOT EXISTS `inventory_transactions` (
   FOREIGN KEY (`hcode`) REFERENCES `unitservice`(`hcode`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`medicine_id`) REFERENCES `medicines`(`id`),
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`)
-<<<<<<< HEAD
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ประวัติการเคลื่อนไหวของยาในคลัง';
-=======
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ประวัติการเคลื่อนไหวของยาในคลัง';
->>>>>>> 163c8d0e3e403626eaf6ae612786ae64fd893129
+
+-- --------------------------------------------------------
+
+--
+-- Insert default admin user
+--
+INSERT INTO `users` (`username`, `password_hash`, `full_name`, `role`, `is_active`) 
+VALUES ('admin', SHA2('1234', 256), 'Administrator', 'ผู้ดูแลระบบ', TRUE);

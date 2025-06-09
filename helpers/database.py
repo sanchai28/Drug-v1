@@ -3,12 +3,15 @@ import mysql.connector
 from mysql.connector import Error
 import os
 
+
 # โหลดการตั้งค่าฐานข้อมูลจาก environment variables
+
 DB_CONFIG = {
     'host': os.getenv('DB_HOST'),
+    'port': os.getenv('DB_PORT'),
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASSWORD'),
-    'database': os.getenv('DB_NAME')
+    'database': os.getenv('DB_NAME'),
 }
 
 def get_db_connection():

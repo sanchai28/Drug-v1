@@ -6,7 +6,7 @@ from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import os
-
+load_dotenv()
 # --- Import Helpers & Blueprints ---
 from helpers.database import db_execute_query, get_db_connection
 from helpers.utils import iso_to_thai_date
@@ -20,7 +20,7 @@ from blueprints.receive import receive_bp
 from blueprints.dispense import dispense_bp
 
 # --- App Initialization ---
-load_dotenv()
+
 app = Flask(__name__)
 CORS(app)
 
@@ -262,4 +262,4 @@ def get_dashboard_summary():
 # --- Main Execution ---
 if __name__ == '__main__':
     # For production, use a WSGI server like Gunicorn or Waitress
-    app.run(host='0.0.0.0', port=8123, debug=True)
+    app.run(host='0.0.0.0', port=8123, debug=False)

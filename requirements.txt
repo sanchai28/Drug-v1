@@ -5,3 +5,6 @@ Werkzeug
 pandas
 openpyxl
 python-dotenv
+gunicorn
+waitress
+certbot-nginx

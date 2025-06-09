@@ -16,28 +16,24 @@
     <style>
         body {
             font-family: 'Sarabun', 'Inter', sans-serif;
-            background: linear-gradient(135deg, #fce4ec, #f3e5f5, #e3f2fd, #e8f5e9, #fffde7);
-            background-size: 200% 200%;
-            animation: gradient-scroll 15s ease infinite;
         }
 
         @keyframes gradient-scroll {
-            0% {
-                background-position: 0% 50%;
-            }
-            50% {
-                background-position: 100% 50%;
-            }
-            100% {
-                background-position: 0% 50%;
-            }
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .animated-gradient {
+            background-size: 200% 200%;
+            animation: gradient-scroll 15s ease infinite;
         }
 
         .tab-link.active {
             border-bottom-color: #ffffff;
             color: #ffffff;
             font-weight: 600;
-            background-color: #1d4ed8; /* blue-700 */
+            background-color: #0d9488; /* teal-600 */
             transform: translateY(-2px);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
@@ -47,8 +43,8 @@
             transition: all 0.3s ease-in-out;
         }
         .tab-link:not(.active):hover {
-            background-color: #3b82f6; /* blue-500 */
-            color: #eff6ff; /* blue-50 */
+            background-color: #2dd4bf; /* teal-400 */
+            color: #f0fdfa; /* teal-50 */
             transform: translateY(-1px);
         }
         .tab-content {
@@ -78,8 +74,8 @@
             white-space: nowrap;
         }
         .custom-table thead th {
-            background-color: #60a5fa; /* blue-400 */
-            color: white;
+            background-color: #99f6e4; /* teal-200 */
+            color: #115e59; /* teal-800 */
             font-weight: 600;
         }
         .custom-table tbody tr:nth-child(even) { background-color: #f9fafb; /* gray-50 */ }
@@ -87,7 +83,7 @@
             transition: background-color 0.2s ease-in-out, transform 0.2s ease-in-out;
         }
         .custom-table tbody tr:hover {
-            background-color: #eff6ff; /* blue-50 */
+            background-color: #ccfbf1; /* teal-100 */
             transform: scale(1.01);
         }
 
@@ -109,8 +105,8 @@
             transform: translateY(0px) scale(0.98);
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
-        .btn-primary { background-color: #3b82f6; color: white; }
-        .btn-primary:hover { background-color: #2563eb; }
+        .btn-primary { background-color: #22d3ee; color: white; } /* cyan-400 */
+        .btn-primary:hover { background-color: #06b6d4; } /* cyan-500 */
         .btn-secondary { background-color: #6b7280; color: white; }
         .btn-secondary:hover { background-color: #4b5563; }
         .btn-danger { background-color: #ef4444; color: white; }
@@ -119,8 +115,8 @@
         .btn-success:hover { background-color: #16a34a; }
         .btn-warning { background-color: #f59e0b; color: white; }
         .btn-warning:hover { background-color: #d97706; }
-        .btn-info { background-color: #06b6d4; color: white; }
-        .btn-info:hover { background-color: #0891b2; }
+        .btn-info { background-color: #14b8a6; color: white; } /* teal-500 */
+        .btn-info:hover { background-color: #0d9488; } /* teal-600 */
 
 
         .card {
@@ -145,8 +141,8 @@
             transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
         .input-field:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25);
+            border-color: #22d3ee; /* cyan-400 */
+            box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25);
             outline: none;
         }
         .label {
@@ -160,8 +156,8 @@
             white-space: nowrap;
         }
         .nav-container::-webkit-scrollbar { height: 6px; }
-        .nav-container::-webkit-scrollbar-thumb { background-color: #60a5fa; border-radius: 3px; }
-        .nav-container::-webkit-scrollbar-track { background-color: #2563eb; }
+        .nav-container::-webkit-scrollbar-thumb { background-color: #67e8f9; /* cyan-300 */ border-radius: 3px; }
+        .nav-container::-webkit-scrollbar-track { background-color: #134e4a; /* teal-900 */ }
 
         .modal {
             position: fixed;
@@ -245,30 +241,30 @@
 
     </style>
 </head>
-<body class="bg-gray-100">
-    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg sticky top-0 z-40">
+<body class="bg-gradient-to-r from-rose-100 via-teal-100 to-blue-100 animated-gradient">
+    <header class="bg-gradient-to-r from-teal-400 to-teal-200 text-white shadow-lg sticky top-0 z-40">
         <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center">
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold">ระบบบริหารจัดการคลังยา รพสต.</h1>
-                <p class="text-sm text-blue-200">Inventory Management System for SHPH</p>
+                <p class="text-sm text-cyan-100">Inventory Management System for SHPH</p>
             </div>
             <div class="mt-2 sm:mt-0 text-sm">
                 <span>ผู้ใช้งาน: <span id="currentUser" class="font-semibold">กรุณาเข้าสู่ระบบ</span></span>
-                <button onclick="logout()" class="ml-4 text-blue-200 hover:text-white transition duration-150 ease-in-out hover:underline">ออกจากระบบ</button>
+                <button onclick="logout()" class="ml-4 text-cyan-100 hover:text-white transition duration-150 ease-in-out hover:underline">ออกจากระบบ</button>
             </div>
         </div>
-        <nav class="bg-blue-700">
+        <nav class="bg-teal-500">
             <div class="container mx-auto px-4 sm:px-6 lg:px-8 nav-container">
                 <ul class="flex space-x-1 text-sm sm:text-base">
-                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต.,เจ้าหน้าที่ รพ. แม่ข่าย"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="dashboard">ภาพรวม</a></li>
-                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="medicineMaster">จัดการข้อมูลยา</a></li>
-                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="inventoryManagement">จัดการคลังยา (รพสต.)</a></li>
-                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="requisitionManagement">จัดการใบเบิกยา (รพสต.)</a></li>
-                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพ. แม่ข่าย"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="requisitionApproval">อนุมัติใบเบิกยา (รพ.แม่ข่าย)</a></li>
-                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="goodsReceiving">รับยาเข้าคลัง (รพสต.)</a></li>
-                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="dispenseMedicine">ตัดจ่ายยา</a></li>
-                    <li data-roles="ผู้ดูแลระบบ"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="unitServiceManagement">จัดการหน่วยบริการ</a></li>
-                    <li data-roles="ผู้ดูแลระบบ"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-blue-100" data-tab="admin">ผู้ดูแลระบบ</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต.,เจ้าหน้าที่ รพ. แม่ข่าย"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-teal-100" data-tab="dashboard">ภาพรวม</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-teal-100" data-tab="medicineMaster">จัดการข้อมูลยา</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-teal-100" data-tab="inventoryManagement">จัดการคลังยา (รพสต.)</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-teal-100" data-tab="requisitionManagement">จัดการใบเบิกยา (รพสต.)</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพ. แม่ข่าย"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-teal-100" data-tab="requisitionApproval">อนุมัติใบเบิกยา (รพ.แม่ข่าย)</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-teal-100" data-tab="goodsReceiving">รับยาเข้าคลัง (รพสต.)</a></li>
+                    <li data-roles="ผู้ดูแลระบบ,เจ้าหน้าที่ รพสต."><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-teal-100" data-tab="dispenseMedicine">ตัดจ่ายยา</a></li>
+                    <li data-roles="ผู้ดูแลระบบ"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-teal-100" data-tab="unitServiceManagement">จัดการหน่วยบริการ</a></li>
+                    <li data-roles="ผู้ดูแลระบบ"><a href="#" class="tab-link py-3 px-3 sm:px-4 block text-teal-100" data-tab="admin">ผู้ดูแลระบบ</a></li>
                 </ul>
             </div>
         </nav>
@@ -279,9 +275,9 @@
         <div id="dashboard" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">ภาพรวมระบบ</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="bg-blue-100 p-4 rounded-lg shadow dashboard-card">
-                    <h3 class="font-semibold text-blue-700">ยาคงคลังทั้งหมด</h3>
-                    <p class="text-2xl font-bold text-blue-900" id="dashboardTotalMedicines">- <span class="text-sm">รายการ</span></p>
+                <div class="bg-cyan-100 p-4 rounded-lg shadow dashboard-card">
+                    <h3 class="font-semibold text-cyan-700">ยาคงคลังทั้งหมด</h3>
+                    <p class="text-2xl font-bold text-cyan-900" id="dashboardTotalMedicines">- <span class="text-sm">รายการ</span></p>
                 </div>
                 <div class="bg-yellow-100 p-4 rounded-lg shadow dashboard-card">
                     <h3 class="font-semibold text-yellow-700">ยาใกล้หมดสต็อก</h3>
@@ -520,7 +516,7 @@
                      <p class="text-xs text-gray-500 mb-1">คอลัมน์ที่ต้องมี: <code class="bg-gray-200 px-1 rounded">วันที่</code>, <code class="bg-gray-200 px-1 rounded">รหัสยา</code>, <code class="bg-gray-200 px-1 rounded">จำนวน</code></p>
                      <p class="text-xs text-gray-500 mb-4">คอลัมน์เพิ่มเติม (แนะนำ): <code class="bg-gray-200 px-1 rounded">hos_guid</code> (สำหรับอ้างอิงและอัปเดตหากจำนวนเปลี่ยน)</p>
                     <label for="excelUploadDispense" class="label sr-only">อัปโหลดไฟล์ Excel สำหรับตัดจ่ายยา:</label>
-                    <input type="file" id="excelUploadDispense" accept=".xls,.xlsx" class="input-field file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-3">
+                    <input type="file" id="excelUploadDispense" accept=".xls,.xlsx" class="input-field file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100 mb-3">
                     <button onclick="uploadDispenseExcel()" class="btn btn-info w-full">
                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-arrow-up mr-2" viewBox="0 0 16 16">
                             <path d="M8.5 11.5a.5.5 0 0 1-1 0V7.707L6.354 8.854a.5.5 0 1 1-.708-.708l2-2a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 7.707z"/>
@@ -577,7 +573,7 @@
         <!-- Admin Content -->
         <div id="admin" class="tab-content card">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">ผู้ดูแลระบบ (Admin)</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
                 <div class="card p-4"> <h3 class="text-lg font-semibold text-gray-700 mb-2">การจัดการผู้ใช้งาน</h3>
                     <button onclick="openAddNewUserModal()" class="btn btn-primary">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-plus-fill mr-2" viewBox="0 0 16 16"><path d="M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/><path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/></svg>

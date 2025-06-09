@@ -276,7 +276,7 @@ function openManualGoodsReceiveModal() {
                 <div id="manualReceiveItemsContainer">
                     </div>
                 <button type="button" class="btn btn-success btn-sm text-xs mt-2" 
-                        onclick="addDynamicItemRow('manualReceiveItemsContainer', ['medicine-search', 'text', 'date-thai', 'number', 'number'], ['ค้นหารหัสยา/ชื่อยา', 'เลขที่ล็อต', 'dd/mm/yyyy', 'จำนวนรับ', 'ราคา/หน่วย'], ['medicine_id', 'lot_number', 'expiry_date', 'quantity_received', 'unit_price'], 'items', '${hcodeForReceive}', null)">
+                        onclick="addDynamicItemRow('manualReceiveItemsContainer', ['medicine-search', 'text', 'date-thai', 'number'], ['ค้นหารหัสยา/ชื่อยา', 'เลขที่ล็อต', 'dd/mm/yyyy', 'จำนวนรับ'], ['medicine_id', 'lot_number', 'expiry_date', 'quantity_received'], 'items', '${hcodeForReceive}', null)">
                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg mr-1" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
                     เพิ่มรายการยา
                 </button>
@@ -290,9 +290,9 @@ function openManualGoodsReceiveModal() {
     `;
     openModal('formModal');
     addDynamicItemRow('manualReceiveItemsContainer', 
-        ['medicine-search', 'text', 'date-thai', 'number', 'number'], 
-        ['ค้นหารหัสยา/ชื่อยา', 'เลขที่ล็อต', 'dd/mm/yyyy', 'จำนวนรับ', 'ราคา/หน่วย'], 
-        ['medicine_id', 'lot_number', 'expiry_date', 'quantity_received', 'unit_price'], 
+        ['medicine-search', 'text', 'date-thai', 'number'], 
+        ['ค้นหารหัสยา/ชื่อยา', 'เลขที่ล็อต', 'dd/mm/yyyy', 'จำนวนรับ'], 
+        ['medicine_id', 'lot_number', 'expiry_date', 'quantity_received'], 
         'items', 
         hcodeForReceive, 
         null 
@@ -319,7 +319,7 @@ function openManualGoodsReceiveModal() {
             const lotInput = row.querySelector(`input[name="items[${index}][lot_number]"]`);
             const expDateInput = row.querySelector(`input[name="items[${index}][expiry_date]"]`);
             const qtyReceivedInput = row.querySelector(`input[name="items[${index}][quantity_received]"]`);
-            const unitPriceInput = row.querySelector(`input[name="items[${index}][unit_price]"]`);
+            //const unitPriceInput = row.querySelector(`input[name="items[${index}][unit_price]"]`);
 
             if (medIdInput && medIdInput.value && lotInput && lotInput.value && expDateInput && expDateInput.value && qtyReceivedInput && qtyReceivedInput.value) {
                  goodsReceivedData.items.push({
@@ -327,7 +327,7 @@ function openManualGoodsReceiveModal() {
                     lot_number: lotInput.value,
                     expiry_date: expDateInput.value, 
                     quantity_received: parseInt(qtyReceivedInput.value),
-                    unit_price: unitPriceInput && unitPriceInput.value ? parseFloat(unitPriceInput.value) : 0.00
+                    //unit_price: unitPriceInput && unitPriceInput.value ? parseFloat(unitPriceInput.value) : 0.00
                 });
             } else {
                 if(medIdInput.value || lotInput.value || expDateInput.value || qtyReceivedInput.value){

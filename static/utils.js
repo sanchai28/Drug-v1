@@ -397,54 +397,44 @@ function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames
     const itemCount = itemsContainer.children.length;
 
     const newItemRow = document.createElement('div');
-    newItemRow.className = 'flex items-center space-x-2 mb-2 animate-fadeIn relative';
+    newItemRow.className = 'flex items-center space-x-2 mb-2 animate-fadeIn';
 
     let fieldsHtml = '';
     for (let i = 0; i < fieldTypes.length; i++) {
         const type = fieldTypes[i];
         const placeholder = placeholders[i] || '';
         const name = arrayName ? `${arrayName}[${itemCount}][${baseFieldNames[i]}]` : baseFieldNames[i];
-
-        let fieldClass = 'input-field flex-grow !mb-0';
-        let inputValue = '';
-        let extraClass = '';
+        
+        let fieldWrapperClass = '';
         let inputHtml = '';
-
+        
         if (type === 'medicine-search') {
+            fieldWrapperClass = 'relative flex-grow w-2/5'; // กำหนดความกว้าง 40%
             const displayName = arrayName ? `${arrayName}[${itemCount}][medicine_display_name]` : 'medicine_display_name';
             const callbackString = medicineSelectCallbackName ? `'${medicineSelectCallbackName}'` : 'null';
             inputHtml = `
-                <div class="relative flex-grow">
+                <div class="${fieldWrapperClass}">
                     <input type="text"
                            placeholder="${placeholder}"
-                           class="${fieldClass} medicine-search-input w-full"
+                           class="input-field medicine-search-input w-full !mb-0"
                            name="${displayName}"
                            oninput="handleMedicineSearch(event, ${itemCount}, '${hcodeContextForSearch}', ${callbackString})"
                            onkeydown="navigateSuggestions(event, ${itemCount})"
-                           data-hcode-context="${hcodeContextForSearch}"
-                           data-medicine-select-callback="${medicineSelectCallbackName || ''}"
-                           data-row-index="${itemCount}"
-                           autocomplete="off"
-                           required>
+                           autocomplete="off" required>
                     <input type="hidden" name="${name}">
                     <div class="suggestions-box absolute top-full left-0 z-10 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg hidden max-h-40 overflow-y-auto"></div>
                 </div>
             `;
-        } else if (type === 'lot-select') {
-            fieldClass = 'input-field w-48 !mb-0 lot-number-select';
-            inputHtml = `<select name="${name}" class="${fieldClass}" required disabled><option value="">-- เลือกยาก่อน --</option></select>`;
-        } else if (type === 'expiry-display') {
-            fieldClass = 'input-field w-32 !mb-0 dispense-expiry-date thai-date-formatter';
-            inputHtml = `<input type="text" placeholder="${placeholder}" class="${fieldClass}" name="${name}" readonly required>`;
-        }
-        else {
-            if (type === 'number') fieldClass = 'input-field w-24 !mb-0';
-            if (type === 'date-thai') {
-                 fieldClass = 'input-field w-40 !mb-0';
-                 inputValue = `value="${getCurrentThaiDateString()}"`;
-                 extraClass = 'thai-date-formatter';
-            }
-            inputHtml = `<input type="${type === 'date-thai' ? 'text' : type}" placeholder="${placeholder}" class="${fieldClass} ${extraClass}" name="${name}" ${type === 'number' ? 'min="0"' : ''} ${inputValue} required>`;
+        } else if (type === 'text') { // สำหรับ Lot No.
+            fieldWrapperClass = 'w-1/5'; // กำหนดความกว้าง 20%
+            inputHtml = `<div class="${fieldWrapperClass}"><input type="text" placeholder="${placeholder}" class="input-field w-full !mb-0" name="${name}" required></div>`;
+        } else if (type === 'date-thai') {
+            fieldWrapperClass = 'w-1/5'; // กำหนดความกว้าง 20%
+            const inputValue = `value="${getCurrentThaiDateString()}"`;
+            inputHtml = `<div class="${fieldWrapperClass}"><input type="text" placeholder="${placeholder}" class="input-field w-full !mb-0 thai-date-formatter" name="${name}" ${inputValue} required></div>`;
+        } else if (type === 'number') { // สำหรับ จำนวน
+            fieldWrapperClass = 'w-1/5'; // กำหนดความกว้าง 20%
+            inputHtml = `<div class="${fieldWrapperClass}"><input type="number" placeholder="${placeholder}" class="input-field w-full !mb-0" name="${name}" min="1" required></div>`;
         }
         fieldsHtml += inputHtml;
     }

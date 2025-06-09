@@ -317,9 +317,9 @@ async function openApproveRequisitionModal(requisitionId, requisitionNumber) {
         if (validItems.length > 0) {
             validItems.forEach((item, index) => {
                 const quantityToApprove = item.quantity_requested; 
-                const approvedLot = item.approved_lot_number || '';
-                const approvedExp = item.approved_expiry_date ? iso_to_thai_date(item.approved_expiry_date) : getCurrentThaiDateString();
-
+                const approvedLot = item.approved_lot_number || ''; // Default to empty string if not set
+                // Default approvedExp to empty string if not set
+                const approvedExp = item.approved_expiry_date ? iso_to_thai_date(item.approved_expiry_date) : '';
 
                 itemsHtml += `
                     <tr data-requisition-item-id="${item.requisition_item_id}">
@@ -401,25 +401,7 @@ async function openApproveRequisitionModal(requisitionId, requisitionNumber) {
                     let approvedExpDateISO = null;
 
                     if (itemStatus === 'อนุมัติ' || itemStatus === 'แก้ไขจำนวน') {
-                        if (!lotInput.value.trim()) {
-                            Swal.fire('ข้อมูลไม่ครบถ้วน', `กรุณาระบุ Lot Number สำหรับรายการยาที่อนุมัติ: ${row.cells[0].textContent}`, 'warning');
-                            lotInput.focus();
-                            formIsValid = false;
-                            return;
-                        }
-                        if (!expDateInput.value.trim()) {
-                            Swal.fire('ข้อมูลไม่ครบถ้วน', `กรุณาระบุวันหมดอายุสำหรับรายการยาที่อนุมัติ: ${row.cells[0].textContent}`, 'warning');
-                            expDateInput.focus();
-                            formIsValid = false;
-                            return;
-                        }
                         approvedExpDateISO = thai_to_iso_date_frontend(expDateInput.value); //
-                        if (!approvedExpDateISO) {
-                             Swal.fire('ข้อมูลไม่ถูกต้อง', `รูปแบบวันหมดอายุไม่ถูกต้องสำหรับรายการยา: ${row.cells[0].textContent}`, 'warning');
-                             expDateInput.focus();
-                             formIsValid = false;
-                             return;
-                        }
                         if (isNaN(qtyApproved) || qtyApproved < 0) {
                              Swal.fire('ข้อมูลไม่ถูกต้อง', `จำนวนอนุมัติต้องเป็นตัวเลขมากกว่าหรือเท่ากับ 0 สำหรับ: ${row.cells[0].textContent}`, 'warning');
                              qtyApprovedInput.focus();

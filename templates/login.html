@@ -46,11 +46,11 @@
         }
     </style>
 </head>
-<body class="bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 flex items-center justify-center min-h-screen animate-gradient-bounce">
+<body class="bg-gradient-to-r from-rose-100 via-teal-100 to-blue-100 flex items-center justify-center min-h-screen animate-gradient-bounce">
     <div class="bg-white p-8 sm:p-10 rounded-xl shadow-2xl w-full max-w-md">
         <div class="text-center mb-8">
             <!-- SVG Icon and Title -->
-            <svg class="mx-auto h-12 w-auto text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <svg class="mx-auto h-12 w-auto text-sky-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12z" />
             </svg>
             <h2 class="mt-6 text-2xl sm:text-3xl font-bold tracking-tight text-gray-900">
@@ -63,7 +63,7 @@
                 <label for="username" class="block text-sm font-medium leading-6 text-gray-900">ชื่อผู้ใช้งาน (Username)</label>
                 <div class="mt-2">
                     <input id="username" name="username" type="text" autocomplete="username" required
-                           class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6">
+                           class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-600 sm:text-sm sm:leading-6">
                 </div>
             </div>
 
@@ -73,13 +73,13 @@
                 </div>
                 <div class="mt-2">
                     <input id="password" name="password" type="password" autocomplete="current-password" required
-                           class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6">
+                           class="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-sky-600 sm:text-sm sm:leading-6">
                 </div>
             </div>
 
             <div>
                 <button type="submit"
-                        class="flex w-full justify-center rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-3 text-sm font-semibold leading-6 text-white shadow-lg hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white transform transition-all duration-150 ease-in-out hover:scale-105 active:scale-95">
+                        class="flex w-full justify-center rounded-lg bg-gradient-to-r from-sky-600 to-cyan-500 px-4 py-3 text-sm font-semibold leading-6 text-white shadow-lg hover:from-sky-700 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-white transform transition-all duration-150 ease-in-out hover:scale-105 active:scale-95">
                     เข้าสู่ระบบ
                 </button>
             </div>
@@ -88,7 +88,6 @@
     </div>
 
     <!-- เรียกใช้ไฟล์ JavaScript ภายนอก -->
-    <!-- utils.js ต้องถูกโหลดก่อน login.js เนื่องจาก login.js ใช้ API_BASE_URL จาก utils.js -->
     <script src="/static/utils.js"></script>
     <script src="/static/login.js"></script> 
 </body>

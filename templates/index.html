@@ -16,8 +16,23 @@
     <style>
         body {
             font-family: 'Sarabun', 'Inter', sans-serif;
-            background-color: #f3f4f6; /* gray-100 */
+            background: linear-gradient(135deg, #fce4ec, #f3e5f5, #e3f2fd, #e8f5e9, #fffde7);
+            background-size: 200% 200%;
+            animation: gradient-scroll 15s ease infinite;
         }
+
+        @keyframes gradient-scroll {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
         .tab-link.active {
             border-bottom-color: #ffffff;
             color: #ffffff;
@@ -568,9 +583,9 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-plus-fill mr-2" viewBox="0 0 16 16"><path d="M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/><path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/></svg>
                         เพิ่มผู้ใช้งานใหม่
                     </button>
-                    <div class="mt-6 overflow-x-auto">
+                    <div class="mt-6 overflow-x-auto w-full">
                         <h4 class="text-md font-semibold text-gray-700 mb-2">รายชื่อผู้ใช้งาน</h4>
-                        <table class="custom-table">
+                        <table class="custom-table w-full">
                             <thead>
                                 <tr>
                                     <th>ID</th>

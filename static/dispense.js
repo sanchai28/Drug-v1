@@ -58,7 +58,7 @@ async function loadAndDisplayDispenseHistory() {
 
             row.innerHTML = `
                 <td>${record.dispense_record_number || `DSP-${record.id}`}</td>
-                <td class="${statusClass}">${record.dispense_date} ${record.status !== 'ปกติ' ? `(${statusText})` : ''}</td>
+                <td class="${statusClass}">${record.created_at} ${record.status !== 'ปกติ' ? `(${statusText})` : ''}</td>
                 <td>${record.dispenser_name}</td>
                 <td class="text-center">${record.item_count || 0}</td>
                 <td>
@@ -575,7 +575,7 @@ async function viewDispenseDetails(recordId, recordHeaderDetails) {
     modalBody.innerHTML = `
             <div class="space-y-3 mb-4">
             <p><strong>เลขที่เอกสาร:</strong> ${recordHeaderDetails.dispense_record_number || `DSP-${recordId}`}</p>
-            <p><strong>วันที่จ่าย:</strong> ${recordHeaderDetails.dispense_date}</p> 
+            <p><strong>วันที่ทำรายการ:</strong> ${recordHeaderDetails.created_at}</p> 
             <p><strong>ผู้จ่ายยา:</strong> ${recordHeaderDetails.dispenser_name}</p>
             <p><strong>ประเภทการจ่าย:</strong> ${recordHeaderDetails.dispense_type || '-'}</p>
             <p><strong>จ่ายจากหน่วยบริการ:</strong> ${recordHeaderDetails.hcode || currentUser.hcode || 'N/A'}</p>
@@ -604,6 +604,7 @@ async function viewDispenseDetails(recordId, recordHeaderDetails) {
             <table class="custom-table text-sm">
                 <thead>
                     <tr>
+                        <th>วันที่จ่าย</th>
                         <th>รหัสยา</th>
                         <th>ชื่อยา</th>
                         <th>Lot No.</th>
@@ -617,6 +618,7 @@ async function viewDispenseDetails(recordId, recordHeaderDetails) {
             items.forEach(item => {
                 itemsTableHtml += `
                     <tr>
+                        <td>${item.dispense_date_item_thai || '-'}</td>
                         <td>${item.medicine_code || '-'}</td>
                         <td>${item.generic_name} ${item.strength || ''}</td>
                         <td>${item.lot_number}</td>

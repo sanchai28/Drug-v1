@@ -74,8 +74,8 @@ def _dispense_medicine_fefo(hcode, medicine_id, quantity_to_dispense, dispense_r
 
     for lot_info in dispensed_from_lots_info:
         db_execute_query(
-            "INSERT INTO dispense_items (dispense_record_id, medicine_id, lot_number, expiry_date, quantity_dispensed, hos_guid, item_status) VALUES (%s, %s, %s, %s, %s, %s, 'ปกติ')",
-            (dispense_record_id, medicine_id, lot_info['lot_number'], lot_info['expiry_date_iso'], lot_info['quantity_dispensed_from_lot'], hos_guid),
+            "INSERT INTO dispense_items (dispense_record_id, medicine_id, lot_number, expiry_date, quantity_dispensed, dispense_date, hos_guid, item_status) VALUES (%s, %s, %s, %s, %s, %s, %s, 'ปกติ')",
+            (dispense_record_id, medicine_id, lot_info['lot_number'], lot_info['expiry_date_iso'], lot_info['quantity_dispensed_from_lot'], item_dispense_date_iso, hos_guid),
             commit=False, cursor_to_use=cursor
         )
     return True
@@ -240,7 +240,7 @@ def get_dispense_records():
     
     query = """
         SELECT dr.id, dr.dispense_record_number, dr.dispense_date, u.full_name as dispenser_name,
-               dr.dispense_type, dr.remarks, dr.hcode, dr.status,
+               dr.dispense_type, dr.remarks, dr.hcode, dr.status, dr.created_at,
                (SELECT COUNT(*) FROM dispense_items di WHERE di.dispense_record_id = dr.id AND di.item_status = 'ปกติ') as item_count
         FROM dispense_records dr JOIN users u ON dr.dispenser_id = u.id
     """
@@ -262,6 +262,7 @@ def get_dispense_records():
     if records is None: return jsonify({"error": "ไม่สามารถดึงข้อมูลได้"}), 500
     for record in records:
         record['dispense_date'] = iso_to_thai_date(record['dispense_date'])
+        record['created_at'] = iso_to_thai_date(record['created_at'])
     return jsonify(records)
 
 
@@ -281,7 +282,7 @@ def get_dispense_record_items(record_id):
     query = """
         SELECT di.id as dispense_item_id, m.id as medicine_id, m.medicine_code,
                m.generic_name, m.strength, m.unit, di.lot_number, di.expiry_date,
-               di.quantity_dispensed, di.hos_guid, di.item_status
+               di.quantity_dispensed, di.hos_guid, di.item_status, di.dispense_date
         FROM dispense_items di JOIN medicines m ON di.medicine_id = m.id
         WHERE di.dispense_record_id = %s AND di.item_status = 'ปกติ' ORDER BY m.generic_name;
     """
@@ -289,6 +290,7 @@ def get_dispense_record_items(record_id):
     if items is None: return jsonify({"error": "ไม่สามารถดึงข้อมูลรายการยาได้"}), 500
     for item in items:
         item['expiry_date'] = iso_to_thai_date(item.get('expiry_date'))
+        item['dispense_date_item_thai'] = iso_to_thai_date(item.get('dispense_date'))
     return jsonify(items)
 
 

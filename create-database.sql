@@ -200,6 +200,8 @@ CREATE TABLE IF NOT EXISTS `dispense_items` (
   `lot_number` VARCHAR(100) NOT NULL COMMENT 'เลขที่ล็อตของยาที่จ่าย',
   `expiry_date` DATE NOT NULL COMMENT 'วันหมดอายุของยาที่จ่าย',
   `quantity_dispensed` INT NOT NULL COMMENT 'จำนวนที่จ่าย',
+  `dispense_date` DATE COMMENT 'วันที่จ่ายยาจริงของรายการนี้',
+	`item_status` TEXT COMMENT 'สถานะของรายการยานี้',
   FOREIGN KEY (`dispense_record_id`) REFERENCES `dispense_records`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`medicine_id`) REFERENCES `medicines`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='รายการยาที่ตัดจ่ายในแต่ละครั้ง';

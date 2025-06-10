@@ -665,7 +665,7 @@ async function handlePrintRequisition(requisitionId, requisitionNumber) {
             <div class="print-container">
                 <div class="document-header">
                     <h2>ใบเบิกยาและเวชภัณฑ์</h2>
-                    <h3>โรงพยาบาลส่งเสริมสุขภาพตำบล ${requisitionHeader.requester_hospital_name || '(ระบุชื่อ รพสต.)'}</h3>
+                    <h3> ${requisitionHeader.requester_hospital_name || '(ระบุชื่อ รพสต.)'}</h3>
                 </div>
 
                 <div class="info-grid">

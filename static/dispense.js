@@ -364,7 +364,7 @@ function showDispenseExcelPreviewModal(previewItems) {
 
         itemsHtml += `
             <tr data-item-index="${index}" class="${rowClass}">
-                <td class="text-center">${item.row_num}</td>
+                <td class="text-center">${item.row_num-1}</td>
                 <td>${item.hos_guid || '-'}</td>
                 <td><input type="text" id="excel-dispense-date-${index}" class="input-field !p-1 !text-xs !mb-0 thai-date-formatter" value="${item.dispense_date_str}" ${inputsDisabled ? 'disabled' : ''}></td>
                 <td>${item.medicine_code}</td>

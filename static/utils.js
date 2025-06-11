@@ -387,17 +387,18 @@ function navigateSuggestions(event, rowIndex) {
  * @param {string|null} arrayName - Optional name for the array if inputs are part of a list (e.g., 'items').
  * @param {string} hcodeContextForSearch - Optional hcode to pass to medicine search for this row.
  * @param {string|null} medicineSelectCallbackName - Optional name of the callback function for medicine selection.
+ * @param {object|null} prefilledItem - Optional object with prefilled data for the row.
  */
-function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames, arrayName = null, hcodeContextForSearch = '', medicineSelectCallbackName = null) {
+function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames, arrayName = null, hcodeContextForSearch = '', medicineSelectCallbackName = null, prefilledItem = null) {
     const itemsContainer = document.getElementById(containerId);
     if (!itemsContainer) {
         console.error(`Container with ID '${containerId}' not found.`);
         return;
     }
-    const itemCount = itemsContainer.children.length;
+    const itemCount = itemsContainer.children.length; // This will be the index for the new row
 
     const newItemRow = document.createElement('div');
-    newItemRow.className = 'flex items-center space-x-2 mb-2 animate-fadeIn';
+    newItemRow.className = 'flex items-center space-x-2 mb-2 animate-fadeIn relative'; // Added relative for potential absolute positioned elements within
 
     let fieldsHtml = '';
     for (let i = 0; i < fieldTypes.length; i++) {
@@ -420,21 +421,24 @@ function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames
                            name="${displayName}"
                            oninput="handleMedicineSearch(event, ${itemCount}, '${hcodeContextForSearch}', ${callbackString})"
                            onkeydown="navigateSuggestions(event, ${itemCount})"
-                           autocomplete="off" required>
-                    <input type="hidden" name="${name}">
+                            autocomplete="off" 
+                            ${prefilledItem ? `value="${prefilledItem.medicine_code} - ${prefilledItem.generic_name}" readonly class="input-field medicine-search-input w-full !mb-0 bg-gray-100"` : `class="input-field medicine-search-input w-full !mb-0"` } 
+                            required>
+                    <input type="hidden" name="${name}" ${prefilledItem ? `value="${prefilledItem.medicine_id}"` : ''}>
                     <div class="suggestions-box absolute top-full left-0 z-10 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg hidden max-h-40 overflow-y-auto"></div>
                 </div>
             `;
-        } else if (type === 'text') { // สำหรับ Lot No.
-            fieldWrapperClass = 'w-1/5'; // กำหนดความกว้าง 20%
-            inputHtml = `<div class="${fieldWrapperClass}"><input type="text" placeholder="${placeholder}" class="input-field w-full !mb-0" name="${name}" required></div>`;
+        } else if (type === 'text') {
+            fieldWrapperClass = 'w-1/5';
+            inputHtml = `<div class="${fieldWrapperClass}"><input type="text" placeholder="${placeholder}" class="input-field w-full !mb-0" name="${name}" ${prefilledItem && baseFieldNames[i] === 'lot_number' ? `value="${prefilledItem.lot_number || ''}"` : ''} required></div>`;
         } else if (type === 'date-thai') {
-            fieldWrapperClass = 'w-1/5'; // กำหนดความกว้าง 20%
-            const inputValue = `value="${getCurrentThaiDateString()}"`;
-            inputHtml = `<div class="${fieldWrapperClass}"><input type="text" placeholder="${placeholder}" class="input-field w-full !mb-0 thai-date-formatter" name="${name}" ${inputValue} required></div>`;
-        } else if (type === 'number') { // สำหรับ จำนวน
-            fieldWrapperClass = 'w-1/5'; // กำหนดความกว้าง 20%
-            inputHtml = `<div class="${fieldWrapperClass}"><input type="number" placeholder="${placeholder}" class="input-field w-full !mb-0" name="${name}" min="1" required></div>`;
+            fieldWrapperClass = 'w-1/5';
+            const dateValue = prefilledItem && baseFieldNames[i] === 'expiry_date' && prefilledItem.expiry_date ? iso_to_thai_date(prefilledItem.expiry_date) : getCurrentThaiDateString();
+            inputHtml = `<div class="${fieldWrapperClass}"><input type="text" placeholder="${placeholder}" class="input-field w-full !mb-0 thai-date-formatter" name="${name}" value="${dateValue}" required></div>`;
+        } else if (type === 'number') {
+            fieldWrapperClass = 'w-1/5';
+            const numValue = prefilledItem && baseFieldNames[i] === 'quantity_requested' ? prefilledItem.quantity_to_request : (prefilledItem && baseFieldNames[i] === 'quantity_received' ? prefilledItem.quantity_received : '');
+            inputHtml = `<div class="${fieldWrapperClass}"><input type="number" placeholder="${placeholder}" class="input-field w-full !mb-0" name="${name}" min="1" ${numValue !== '' ? `value="${numValue}"` : ''} required></div>`;
         }
         fieldsHtml += inputHtml;
     }
@@ -446,6 +450,21 @@ function addDynamicItemRow(containerId, fieldTypes, placeholders, baseFieldNames
         </button>
     `;
     itemsContainer.appendChild(newItemRow);
+
+    // If item is prefilled, and a callback exists, call it.
+    if (prefilledItem && medicineSelectCallbackName && typeof window[medicineSelectCallbackName] === 'function') {
+        // The callback (onMedicineSelectedForRequisition) expects (selectedItem, rowElement, itemIndex)
+        // selectedItem should contain all necessary fields like total_quantity_on_hand, min_stock, max_stock
+        window[medicineSelectCallbackName](prefilledItem, newItemRow, itemCount);
+    }
+    
+    // Re-apply date formatter to any new date fields
+    newItemRow.querySelectorAll('.thai-date-formatter').forEach(el => {
+        if (typeof autoFormatThaiDateInput === 'function') { // Ensure function exists
+            el.addEventListener('input', autoFormatThaiDateInput);
+            // If prefilled, ensure initial format is also correct (though value attribute should handle it)
+        }
+    });
 
     const newLotSelect = newItemRow.querySelector('.lot-number-select');
     const newExpDateInput = newItemRow.querySelector('.dispense-expiry-date');

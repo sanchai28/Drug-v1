@@ -5,6 +5,7 @@ from helpers.database import db_execute_query, get_db_connection
 from helpers.utils import thai_to_iso_date, iso_to_thai_date
 from datetime import datetime
 from mysql.connector import Error
+import math # Added for math.ceil
 
 # สร้าง Blueprint สำหรับ requisitions
 requisition_bp = Blueprint('requisitions', __name__, url_prefix='/api/requisitions')
@@ -230,12 +231,31 @@ def get_requisition_items(requisition_id):
 
     query = """
         SELECT
-            ri.id as requisition_item_id, m.id as medicine_id, m.medicine_code,
-            m.generic_name, m.strength, m.unit, ri.quantity_requested,
-            ri.quantity_approved, ri.approved_lot_number, ri.approved_expiry_date,
-            ri.item_approval_status, ri.reason_for_change_or_rejection
+            ri.id as requisition_item_id, 
+            m.id as medicine_id, 
+            m.medicine_code,
+            m.generic_name, 
+            m.strength, 
+            m.unit, 
+            m.min_stock,
+            m.max_stock,
+            COALESCE(inv_sum.current_stock, 0) AS total_quantity_on_hand,
+            ri.quantity_requested,
+            ri.quantity_approved, 
+            ri.approved_lot_number, 
+            ri.approved_expiry_date,
+            ri.item_approval_status, 
+            ri.reason_for_change_or_rejection
         FROM requisition_items ri
         JOIN medicines m ON ri.medicine_id = m.id
+        LEFT JOIN (
+            SELECT 
+                inv.medicine_id, 
+                inv.hcode, 
+                SUM(inv.quantity_on_hand) AS current_stock
+            FROM inventory inv
+            GROUP BY inv.medicine_id, inv.hcode
+        ) AS inv_sum ON m.id = inv_sum.medicine_id AND m.hcode = inv_sum.hcode
         WHERE ri.requisition_id = %s AND m.hcode = %s
         ORDER BY m.generic_name;
     """
@@ -367,3 +387,70 @@ def process_requisition_approval(requisition_id):
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
+
+@requisition_bp.route('/suggest-auto-items', methods=['GET'])
+def suggest_auto_requisition_items():
+    hcode = request.args.get('hcode')
+    if not hcode:
+        return jsonify({"error": "hcode parameter is required"}), 400
+
+    query = """
+        SELECT
+            m.id AS medicine_id, m.medicine_code, m.generic_name, m.strength, m.unit,
+            m.min_stock, m.max_stock,
+            COALESCE(inv_sum.current_stock, 0) AS total_quantity_on_hand
+        FROM medicines m
+        LEFT JOIN (
+            SELECT medicine_id, hcode, SUM(quantity_on_hand) AS current_stock
+            FROM inventory
+            WHERE hcode = %s  -- Filter inventory by hcode here as well
+            GROUP BY medicine_id, hcode
+        ) AS inv_sum ON m.id = inv_sum.medicine_id AND m.hcode = inv_sum.hcode -- Ensure join uses m.hcode
+        WHERE m.hcode = %s AND m.is_active = TRUE AND m.min_stock > 0
+        ORDER BY m.generic_name;
+    """
+    # Note: The subquery for inv_sum also needs to be filtered by hcode for accuracy,
+    # or ensure the outer m.hcode = inv_sum.hcode join is sufficient.
+    # The provided query structure is generally okay if inv_sum.hcode is correctly matched.
+    # For clarity and safety, adding hcode filter in subquery is better.
+    
+    medicines = db_execute_query(query, (hcode, hcode), fetchall=True) # Pass hcode twice
+
+    if medicines is None:
+        return jsonify({"error": "Could not fetch medicine data for suggestions."}), 500
+
+    suggested_items = []
+    for item in medicines:
+        current_stock = item.get('total_quantity_on_hand', 0)
+        min_val = item.get('min_stock', 0)
+        max_val = item.get('max_stock', 0)
+
+        # Ensure min_val and max_val are not None before comparison
+        min_val = min_val if min_val is not None else 0
+        max_val = max_val if max_val is not None else 0
+        current_stock = current_stock if current_stock is not None else 0
+
+        quantity_to_request = 0
+
+        if current_stock < min_val:
+            if max_val > 0 and max_val > current_stock:
+                quantity_to_request = max_val - current_stock
+            else:
+                quantity_to_request = min_val - current_stock
+        
+        if quantity_to_request > 0:
+            # Create a dictionary for the suggested item, copying necessary fields
+            suggestion = {
+                'medicine_id': item['medicine_id'],
+                'medicine_code': item['medicine_code'],
+                'generic_name': item['generic_name'],
+                'strength': item['strength'],
+                'unit': item['unit'],
+                'min_stock': min_val,
+                'max_stock': max_val,
+                'total_quantity_on_hand': current_stock,
+                'quantity_to_request': math.ceil(quantity_to_request)
+            }
+            suggested_items.append(suggestion)
+
+    return jsonify(suggested_items)

@@ -13,10 +13,10 @@ async function loadAndDisplayInventorySummary() {
         console.error("Table body for inventory management not found.");
         return;
     }
-    tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลคลังยา...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลคลังยา...</td></tr>'; // Updated colspan
 
     if (!currentUser) { 
-        tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-red-500 py-4">ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่</td></tr>'; // Updated colspan
         console.warn("Cannot load inventory: currentUser is not defined.");
         return;
     }
@@ -27,7 +27,7 @@ async function loadAndDisplayInventorySummary() {
     if (currentUser.hcode) {
         params.append('hcode', currentUser.hcode);
     } else if (currentUser.role !== 'ผู้ดูแลระบบ') { 
-        tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-orange-500 py-4">ไม่สามารถโหลดข้อมูลคลังยาได้: ไม่พบรหัสหน่วยบริการผู้ใช้</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-orange-500 py-4">ไม่สามารถโหลดข้อมูลคลังยาได้: ไม่พบรหัสหน่วยบริการผู้ใช้</td></tr>'; // Updated colspan
         console.warn("Cannot load inventory: User hcode not available for non-admin.");
         return;
     }
@@ -35,7 +35,7 @@ async function loadAndDisplayInventorySummary() {
     if (params.toString()) {
         endpoint += `?${params.toString()}`;
     } else if (currentUser.role !== 'ผู้ดูแลระบบ') { 
-         tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-orange-500 py-4">กรุณาระบุหน่วยบริการเพื่อดูข้อมูลคลังยา</td></tr>';
+         tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-orange-500 py-4">กรุณาระบุหน่วยบริการเพื่อดูข้อมูลคลังยา</td></tr>'; // Updated colspan
         return;
     }
 
@@ -45,22 +45,27 @@ async function loadAndDisplayInventorySummary() {
         tableBody.innerHTML = ''; 
 
         if (!inventorySummary || inventorySummary.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-gray-500 py-4">ไม่พบข้อมูลคลังยาสำหรับหน่วยบริการ ${currentUser.hcode || '(ไม่ได้ระบุ)'}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-gray-500 py-4">ไม่พบข้อมูลคลังยาสำหรับหน่วยบริการ ${currentUser.hcode || '(ไม่ได้ระบุ)'}</td></tr>`; // Updated colspan
             return;
         }
 
         inventorySummary.forEach(item => {
             const row = tableBody.insertRow();
-            let statusClass = 'bg-green-100 text-green-800'; 
-            if (item.status === 'ใกล้หมด') {
+            let statusClass = 'bg-green-100 text-green-800'; // Default for 'ปกติ'
+            if (item.status === 'ต่ำกว่า Min' || item.status === 'ใกล้ Reorder Point') { // Grouping 'ต่ำกว่า Min' with 'ใกล้ Reorder Point' for yellow
                 statusClass = 'bg-yellow-100 text-yellow-800';
             } else if (item.status === 'หมด') {
                 statusClass = 'bg-red-100 text-red-800';
+            } else if (item.status === 'เกิน Max') {
+                statusClass = 'bg-orange-100 text-orange-800'; // Tailwind CSS has orange
             }
+            // Note: 'ใกล้หมด' was the old status, now replaced by 'ต่ำกว่า Min' or 'ใกล้ Reorder Point'
 
             row.innerHTML = `
                 <td>${item.medicine_code || '-'}</td>
                 <td>${item.generic_name} ${item.strength || ''}</td>
+                <td class="text-center">${item.min_stock === null || item.min_stock === undefined ? '-' : item.min_stock}</td>
+                <td class="text-center">${item.max_stock === null || item.max_stock === undefined ? '-' : item.max_stock}</td>
                 <td class="text-center">${item.total_quantity_on_hand || 0} ${item.unit}</td>
                 <td><span class="px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">${item.status}</span></td>
                 <td>
@@ -74,7 +79,7 @@ async function loadAndDisplayInventorySummary() {
             `;
         });
     } catch (error) {
-        tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูลคลังยา</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูลคลังยา</td></tr>'; // Updated colspan
     }
 }
 
@@ -174,7 +179,7 @@ async function fetchAndDisplayInventoryHistory(medicineId) {
                     <tbody>`;
 
         if (!history || history.length === 0) {
-            historyHtml += `<tr><td colspan="9" class="text-center text-gray-500 py-4">ไม่พบประวัติการเคลื่อนไหวสำหรับยานี้ในหน่วยบริการ ${currentUser.hcode} ${startDate || endDate ? 'ในช่วงวันที่ที่เลือก' : ''}</td></tr>`; // Updated colspan
+            historyHtml += `<tr><td colspan="9" class="text-center text-gray-500 py-4">ไม่พบประวัติการเคลื่อนไหวสำหรับยานี้ในหน่วยบริการ ${currentUser.hcode} ${startDate || endDate ? 'ในช่วงวันที่ที่เลือก' : ''}</td></tr>`;
         } else {
             history.forEach(item => {
                 const receivedQty = item.quantity_change > 0 ? item.quantity_change : '-';

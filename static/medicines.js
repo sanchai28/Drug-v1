@@ -10,10 +10,10 @@ async function loadAndDisplayMedicines() {
         console.error("Table body for medicines not found.");
         return;
     }
-    tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลยา...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-gray-400 py-4">กำลังโหลดข้อมูลยา...</td></tr>'; // Updated colspan
 
     if (!currentUser) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-4">ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-red-500 py-4">ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบใหม่</td></tr>'; // Updated colspan
         console.warn("Cannot load medicines: currentUser is not defined.");
         return;
     }
@@ -24,7 +24,7 @@ async function loadAndDisplayMedicines() {
     if (currentUser.hcode) {
         params.append('hcode', currentUser.hcode);
     } else if (currentUser.role !== 'ผู้ดูแลระบบ') {
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-orange-500 py-4">ไม่สามารถโหลดข้อมูลยาได้: ไม่พบรหัสหน่วยบริการผู้ใช้</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-orange-500 py-4">ไม่สามารถโหลดข้อมูลยาได้: ไม่พบรหัสหน่วยบริการผู้ใช้</td></tr>'; // Updated colspan
         console.warn("Cannot load medicines: User hcode not available for non-admin.");
         return;
     }
@@ -32,7 +32,7 @@ async function loadAndDisplayMedicines() {
     if (params.toString()) {
         endpoint += `?${params.toString()}`;
     } else if (currentUser.role !== 'ผู้ดูแลระบบ') { 
-         tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-orange-500 py-4">กรุณาระบุหน่วยบริการเพื่อดูรายการยา</td></tr>';
+         tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-orange-500 py-4">กรุณาระบุหน่วยบริการเพื่อดูรายการยา</td></tr>'; // Updated colspan
         return;
     }
 
@@ -42,21 +42,24 @@ async function loadAndDisplayMedicines() {
         tableBody.innerHTML = ''; 
 
         if (!medicines || medicines.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-gray-500 py-4">ไม่พบข้อมูลยาสำหรับหน่วยบริการ ${currentUser.hcode || '(ไม่ได้ระบุ)'}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="10" class="text-center text-gray-500 py-4">ไม่พบข้อมูลยาสำหรับหน่วยบริการ ${currentUser.hcode || '(ไม่ได้ระบุ)'}</td></tr>`; // Updated colspan
             return;
         }
 
         medicines.forEach(med => {
             const row = tableBody.insertRow();
             const medJsonString = JSON.stringify(med).replace(/"/g, "&quot;").replace(/'/g, "&apos;");
-            // Removed isActiveText, toggleButtonText, toggleButtonClass as the button is removed
 
             row.innerHTML = `
                 <td>${med.medicine_code || '-'}</td>
                 <td>${med.generic_name}</td>
                 <td>${med.strength || '-'}</td>
                 <td>${med.unit}</td>
-                <td class="text-center">${med.reorder_point}</td>
+                <td class="text-center">${med.reorder_point || 0}</td>
+                <td class="text-center">${med.min_stock || 0}</td>
+                <td class="text-center">${med.max_stock || 0}</td>
+                <td class="text-center">${med.lead_time_days || 0}</td>
+                <td class="text-center">${med.review_period_days || 0}</td>
                 <td>
                     <button onclick='openEditMedicineModal(${medJsonString})' class="btn btn-warning btn-sm text-xs px-2 py-1 mr-1">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-pencil-square mr-1" viewBox="0 0 16 16"><path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zM13.5 4.5L11.5 2.5 4.71 9.29a1.5 1.5 0 0 0-.426 1.061l-.433 2.596a.5.5 0 0 0 .64.64l2.596-.433a1.5 1.5 0 0 0 1.06-.426zM1.5 12.5A1.5 1.5 0 0 0 3 14h10a1.5 1.5 0 0 0 1.5-1.5V6.854L13.5 5.304V4.5h-1v.804L11.5 4.304V3.5h-1v.804L9.5 3.304V2.5h-1v.804L7.5 2.304V1.5h-1v.804L5.5 1.304V.5H4.459L3 1.959V3.5h-.5a.5.5 0 0 0-.5.5v10a.5.5 0 0 0 .5.5h.5v.5a.5.5 0 0 0 .5.5H3a.5.5 0 0 0 .5-.5V13h10.5a.5.5 0 0 0 .5.5h.5a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5H13v-1.146A1.5 1.5 0 0 0 11.5 11h-10A1.5 1.5 0 0 0 0 12.5v2A1.5 1.5 0 0 0 1.5 16h13a1.5 1.5 0 0 0 1.5-1.5v-2A1.5 1.5 0 0 0 14.5 11H13V9.5a.5.5 0 0 0-.5-.5H1.5a.5.5 0 0 0-.5.5v3z"/></svg>
@@ -66,7 +69,7 @@ async function loadAndDisplayMedicines() {
             `;
         });
     } catch (error) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูลยา</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="10" class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดข้อมูลยา</td></tr>'; // Updated colspan
     }
 }
 
@@ -117,6 +120,26 @@ function openAddMedicineModal() {
                 <label for="addReorderPoint" class="label">จุดสั่งซื้อขั้นต่ำ:</label>
                 <input type="number" id="addReorderPoint" name="reorder_point" class="input-field" min="0" value="0" required>
             </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label for="addMinStock" class="label">Min Stock:</label>
+                    <input type="number" id="addMinStock" name="min_stock" class="input-field" min="0" value="0">
+                </div>
+                <div class="mb-4">
+                    <label for="addMaxStock" class="label">Max Stock:</label>
+                    <input type="number" id="addMaxStock" name="max_stock" class="input-field" min="0" value="0">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label for="addLeadTimeDays" class="label">Lead Time (Days):</label>
+                    <input type="number" id="addLeadTimeDays" name="lead_time_days" class="input-field" min="0" value="0">
+                </div>
+                <div class="mb-4">
+                    <label for="addReviewPeriodDays" class="label">Review Period (Days):</label>
+                    <input type="number" id="addReviewPeriodDays" name="review_period_days" class="input-field" min="0" value="0">
+                </div>
+            </div>
             <div class="flex justify-end space-x-3 mt-6">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('formModal')">ยกเลิก</button>
                 <button type="submit" class="btn btn-primary">บันทึก</button>
@@ -132,6 +155,10 @@ function openAddMedicineModal() {
             const formData = new FormData(this);
             const medicineData = Object.fromEntries(formData.entries());
             medicineData.reorder_point = parseInt(medicineData.reorder_point) || 0;
+            medicineData.min_stock = parseInt(document.getElementById('addMinStock').value) || 0;
+            medicineData.max_stock = parseInt(document.getElementById('addMaxStock').value) || 0;
+            medicineData.lead_time_days = parseInt(document.getElementById('addLeadTimeDays').value) || 0;
+            medicineData.review_period_days = parseInt(document.getElementById('addReviewPeriodDays').value) || 0;
 
             try {
                 const responseData = await fetchData('/medicines', { 
@@ -192,6 +219,26 @@ function openEditMedicineModal(medicineData) {
                 <label for="editReorderPoint" class="label">จุดสั่งซื้อขั้นต่ำ:</label>
                 <input type="number" id="editReorderPoint" name="reorder_point" class="input-field" value="${medicineData.reorder_point || 0}" min="0" required>
             </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label for="editMinStock" class="label">Min Stock:</label>
+                    <input type="number" id="editMinStock" name="min_stock" class="input-field" value="${medicineData.min_stock || 0}" min="0">
+                </div>
+                <div class="mb-4">
+                    <label for="editMaxStock" class="label">Max Stock:</label>
+                    <input type="number" id="editMaxStock" name="max_stock" class="input-field" value="${medicineData.max_stock || 0}" min="0">
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="mb-4">
+                    <label for="editLeadTimeDays" class="label">Lead Time (Days):</label>
+                    <input type="number" id="editLeadTimeDays" name="lead_time_days" class="input-field" value="${medicineData.lead_time_days || 0}" min="0">
+                </div>
+                <div class="mb-4">
+                    <label for="editReviewPeriodDays" class="label">Review Period (Days):</label>
+                    <input type="number" id="editReviewPeriodDays" name="review_period_days" class="input-field" value="${medicineData.review_period_days || 0}" min="0">
+                </div>
+            </div>
             <div class="mb-4">
                 <label for="editIsActive" class="label">สถานะการใช้งาน:</label>
                 <select id="editIsActive" name="is_active" class="input-field">
@@ -214,6 +261,10 @@ function openEditMedicineModal(medicineData) {
             const formData = new FormData(this);
             const updatedMedicineData = Object.fromEntries(formData.entries());
             updatedMedicineData.reorder_point = parseInt(updatedMedicineData.reorder_point) || 0;
+            updatedMedicineData.min_stock = parseInt(document.getElementById('editMinStock').value) || 0;
+            updatedMedicineData.max_stock = parseInt(document.getElementById('editMaxStock').value) || 0;
+            updatedMedicineData.lead_time_days = parseInt(document.getElementById('editLeadTimeDays').value) || 0;
+            updatedMedicineData.review_period_days = parseInt(document.getElementById('editReviewPeriodDays').value) || 0;
             updatedMedicineData.is_active = updatedMedicineData.is_active === 'true'; 
             const medicineId = updatedMedicineData.id; 
 
@@ -271,4 +322,76 @@ async function confirmToggleMedicineStatus(medicineId, medicineName, currentIsAc
             }
         }
     });
+}
+
+// Add event listener for the new Min/Max calculation button
+document.addEventListener('DOMContentLoaded', () => {
+    const calcButton = document.getElementById('calculateMinMaxButton');
+    if (calcButton) {
+        calcButton.addEventListener('click', handleCalculateMinMax);
+    }
+});
+
+async function handleCalculateMinMax() {
+    if (!currentUser || !currentUser.hcode) {
+        Swal.fire('Error', 'User information not found or HCODE is missing. Please log in again.', 'error');
+        return;
+    }
+
+    const calculationPeriodInput = document.getElementById('calculationPeriodDays');
+    const calculation_period_days = parseInt(calculationPeriodInput.value) || 90;
+
+    if (calculation_period_days <= 0) {
+        Swal.fire('Invalid Input', 'Calculation period must be a positive number of days.', 'warning');
+        return;
+    }
+
+    const confirmation = await Swal.fire({
+        title: 'Confirm Calculation',
+        text: `This will recalculate Min/Max stock levels for ALL active medicines in your unit (${currentUser.hcode}) using a ${calculation_period_days}-day consumption period. This may overwrite existing manual Min/Max values. Proceed?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, Calculate!',
+        cancelButtonText: 'Cancel'
+    });
+
+    if (confirmation.isConfirmed) {
+        Swal.fire({
+            title: 'Calculating...',
+            text: 'Please wait while Min/Max stock levels are being updated.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        try {
+            const payload = {
+                hcode: currentUser.hcode,
+                calculation_period_days: calculation_period_days
+                // medicine_id is omitted to calculate for all
+            };
+
+            // Assuming fetchData is a global function that handles API calls and errors
+            // and returns parsed JSON response or throws an error.
+            const responseData = await fetchData('/inventory/calculate-min-max', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            Swal.fire('Success!', responseData.message || 'Min/Max stock levels calculated successfully.', 'success');
+            
+            if (typeof loadAndDisplayMedicines === 'function') {
+                loadAndDisplayMedicines(); // Refresh the table to show new Min/Max values
+            }
+
+        } catch (error) {
+            console.error('Error calculating Min/Max stock:', error);
+            Swal.fire('Error', error.message || 'An error occurred during calculation.', 'error');
+        }
+    }
 }

@@ -52,6 +52,10 @@ CREATE TABLE IF NOT EXISTS `medicines` (
   `strength` VARCHAR(100) COMMENT 'ความแรงของยา',
   `unit` VARCHAR(50) NOT NULL COMMENT 'หน่วยนับ (เช่น เม็ด, ขวด, หลอด)',
   `reorder_point` INT DEFAULT 0 COMMENT 'จุดสั่งซื้อขั้นต่ำสำหรับยานี้ที่หน่วยบริการนี้',
+  `min_stock` INT DEFAULT 0 COMMENT 'ระดับสต็อกต่ำสุดที่คำนวณได้ หรือกำหนดเอง',
+  `max_stock` INT DEFAULT 0 COMMENT 'ระดับสต็อกสูงสุดที่คำนวณได้ หรือกำหนดเอง',
+  `lead_time_days` INT DEFAULT 0 COMMENT 'ระยะเวลารอคอยสินค้า (วัน) สำหรับการคำนวณ Min-Max',
+  `review_period_days` INT DEFAULT 0 COMMENT 'รอบระยะเวลาทบทวนสต็อก (วัน) สำหรับการคำนวณ Max',
   `is_active` BOOLEAN DEFAULT TRUE COMMENT 'สถานะยา (TRUE=ยังมีการใช้งานที่หน่วยบริการนี้)',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -202,6 +206,7 @@ CREATE TABLE IF NOT EXISTS `dispense_items` (
   `quantity_dispensed` INT NOT NULL COMMENT 'จำนวนที่จ่าย',
   `dispense_date` DATE COMMENT 'วันที่จ่ายยาจริงของรายการนี้',
 	`item_status` TEXT COMMENT 'สถานะของรายการยานี้',
+  `hos_guid` TEXT COMMENT 'รหัสอ้างอิงของรายการยา',
   FOREIGN KEY (`dispense_record_id`) REFERENCES `dispense_records`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   FOREIGN KEY (`medicine_id`) REFERENCES `medicines`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='รายการยาที่ตัดจ่ายในแต่ละครั้ง';

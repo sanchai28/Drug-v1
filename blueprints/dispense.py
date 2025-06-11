@@ -27,12 +27,12 @@ def get_total_medicine_stock(hcode, medicine_id, cursor):
 def map_dispense_type_to_inventory_transaction_type(dispense_type_from_record):
     """แปลงประเภทการจ่าย (dispense_type) เป็นประเภท Transaction ใน inventory"""
     if dispense_type_from_record is None:
-        return 'อื่นๆ'
-    if dispense_type_from_record.endswith('(Excel)'):
-        return 'จ่ายออก-Excel'
-    elif dispense_type_from_record in ['ผู้ป่วยนอก', 'ผู้ป่วยใน', 'หน่วยงานภายใน', 'หมดอายุ']:
-        return 'จ่ายออก-ผู้ป่วย'
-    return 'อื่นๆ'
+        return 'อื่นๆ' # 'อื่นๆ' is a valid ENUM
+    # Consolidate Excel dispenses with patient dispenses for transaction logging
+    if dispense_type_from_record.endswith('(Excel)') or \
+       dispense_type_from_record in ['ผู้ป่วยนอก', 'ผู้ป่วยใน', 'หน่วยงานภายใน', 'หมดอายุ']:
+        return 'จ่ายออก-ผู้ป่วย' # 'จ่ายออก-ผู้ป่วย' is a valid ENUM
+    return 'อื่นๆ' # Fallback to 'อื่นๆ'
 
 def _dispense_medicine_fefo(hcode, medicine_id, quantity_to_dispense, dispense_record_id, dispenser_id, dispense_record_number, hos_guid, dispense_type_from_record, item_dispense_date_iso, cursor):
     """
@@ -66,8 +66,8 @@ def _dispense_medicine_fefo(hcode, medicine_id, quantity_to_dispense, dispense_r
         
         transaction_datetime = f"{item_dispense_date_iso} {datetime.now().strftime('%H:%M:%S')}"
         db_execute_query(
-            "INSERT INTO inventory_transactions (hcode, medicine_id, lot_number, expiry_date, transaction_type, quantity_change, quantity_before_transaction, quantity_after_transaction, reference_document_id, external_reference_guid, user_id, remarks, transaction_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-            (hcode, medicine_id, lot['lot_number'], str(lot['expiry_date']), inventory_transaction_type, -qty_to_take_from_this_lot, stock_before_txn, stock_after_txn, dispense_record_number, hos_guid, dispenser_id, f"FEFO Dispense (Lot: {lot['lot_number']})", transaction_datetime),
+            "INSERT INTO inventory_transactions (hcode, medicine_id, lot_number, expiry_date, transaction_type, quantity_change, quantity_before_transaction, quantity_after_transaction, reference_document_id, user_id, remarks, transaction_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (hcode, medicine_id, lot['lot_number'], str(lot['expiry_date']), inventory_transaction_type, -qty_to_take_from_this_lot, stock_before_txn, stock_after_txn, dispense_record_number, dispenser_id, f"FEFO Dispense (Lot: {lot['lot_number']})", transaction_datetime),
             commit=False, cursor_to_use=cursor
         )
         remaining_qty_to_dispense -= qty_to_take_from_this_lot
@@ -133,10 +133,10 @@ def _cancel_dispense_item_internal(dispense_item_id, cancelling_user_id, cursor,
             dispense_hcode, medicine_id, lot_number, expiry_date_iso, 
             dispense_ref_number, -quantity_to_add_back, inventory_transaction_type_to_match
         ]
-
-        if item_hos_guid:
-            delete_txn_conditions.append("external_reference_guid = %s")
-            delete_txn_params.append(item_hos_guid)
+        # Removed external_reference_guid logic
+        # if item_hos_guid:
+        # delete_txn_conditions.append("external_reference_guid = %s")
+        # delete_txn_params.append(item_hos_guid)
         
         delete_inventory_transaction_query = f"""
             DELETE FROM inventory_transactions 

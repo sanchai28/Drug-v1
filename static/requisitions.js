@@ -156,13 +156,23 @@ function openCreateRequisitionModal() {
             </div>
             <div class="mb-4">
                 <label class="label">รายการยาที่ต้องการเบิก:</label>
+                <div class="flex items-center mb-2"> <!-- Flex container for buttons -->
+                    <button type="button" id="autoGenerateRequisitionItems" class="btn btn-success mr-2"> <!-- Success color, consistent with add item -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-magic mr-2" viewBox="0 0 16 16"><path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0zm4.5.035A.5.5 0 0 0 13.5 2h-1.5a.5.5 0 0 0 0 1h1.5a.5.5 0 0 0 .5-.5q0-.146-.066-.277M11.293 4.707a.5.5 0 0 0 .707-.707L11.207.707a.5.5 0 0 0-.707.707zm-9.796 8.42a.5.5 0 0 0 .707.707l1.293-1.293a.5.5 0 0 0-.707-.707zM1.5 10.5a.5.5 0 0 0 0-1H.5a.5.5 0 0 0 0 1zm2.467-3.41a.5.5 0 0 0-.707.707l.001.001a.5.5 0 0 0 .707-.707zm3.129-1.85a.5.5 0 1 0 0-1H6.25a.5.5 0 0 0 0 1h.846zM4.934 1.5a.5.5 0 0 0 0 1h.033a.5.5 0 0 0 0-1zm1.293 1.293A.5.5 0 0 0 6.934 2h.033a.5.5 0 0 0 0-1h-.033a.5.5 0 0 0-.707.293zM7.58 15.424a.5.5 0 0 0 .707-.707l-1.293-1.293a.5.5 0 0 0-.707.707l1.293 1.293zM10.5 13.5a.5.5 0 0 0 1 0v-1.5a.5.5 0 0 0-1 0zM2.328 13.277a.5.5 0 0 0-.707-.707L.707 13.277a.5.5 0 0 0 .707.707l.914-.913zm11.83-3.182a.5.5 0 0 0-.707.707l.914.914a.5.5 0 0 0 .707-.707zM2 1.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0 0 1h1a.5.5 0 0 0 .5-.5M12.5 0a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5z"/></svg>
+                        สร้างรายการอัตโนมัติ (ต่ำกว่า Min)
+                    </button>
+                    <button type="button" class="btn btn-info" 
+                            onclick="addDynamicItemRow('requisitionItemsContainer', ['medicine-search', 'number'], ['ค้นหารหัสยา/ชื่อยา', 'จำนวน'], ['medicine_id', 'quantity_requested'], 'items', '${hcodeForRequisition}', 'onMedicineSelectedForRequisition')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg mr-1" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
+                        เพิ่มรายการยา (ด้วยตนเอง)
+                    </button>
+                </div>
                 <div id="requisitionItemsContainer">
-                    </div>
-                <button type="button" class="btn btn-success btn-sm text-xs mt-2" 
-                        onclick="addDynamicItemRow('requisitionItemsContainer', ['medicine-search', 'number'], ['ค้นหารหัสยา/ชื่อยา', 'จำนวน'], ['medicine_id', 'quantity_requested'], 'items', '${hcodeForRequisition}', null)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg mr-1" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
-                    เพิ่มรายการยา
-                </button>
+                    <!-- Dynamic item rows will be added here -->
+                </div>
+            </div>
+            <div id="itemsInfoContainer" class="mt-2">
+                <!-- Stock info for items will be dynamically added here by the callback -->
             </div>
              <div class="flex justify-end space-x-3 mt-6">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('formModal')">ยกเลิก</button>
@@ -177,9 +187,14 @@ function openCreateRequisitionModal() {
         ['medicine_id', 'quantity_requested'], 
         'items', 
         hcodeForRequisition, 
-        null 
+        'onMedicineSelectedForRequisition' // Changed to string
     );
 
+    // Event listener for the new auto-generate button
+    const autoGenerateBtn = document.getElementById('autoGenerateRequisitionItems');
+    if (autoGenerateBtn) {
+        autoGenerateBtn.addEventListener('click', handleAutoGenerateItems);
+    }
 
      document.getElementById('createRequisitionForm').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -251,14 +266,26 @@ async function openRequisitionDetailsModal(requisitionNumber, requester, date, s
         <h4 class="font-semibold mb-2 text-gray-700">รายการยาที่เบิก:</h4>
         <div class="overflow-x-auto">
             <table class="custom-table text-sm">
-                <thead><tr><th>รหัสยา</th><th>ชื่อยา</th><th>ความแรง</th><th>หน่วยนับ</th><th>จำนวนขอเบิก</th><th>จำนวนอนุมัติ</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>รหัสยา</th>
+                        <th>ชื่อยา</th>
+                        <th>ความแรง</th>
+                        <th>หน่วยนับ</th>
+                        <th class="text-center">คงคลัง</th>
+                        <th class="text-center">Min</th>
+                        <th class="text-center">Max</th>
+                        <th class="text-center">ขอเบิก</th>
+                        <th class="text-center">อนุมัติ</th>
+                    </tr>
+                </thead>
                 <tbody id="requisitionDetailItemsTableBody">
-                    <tr><td colspan="6" class="text-center py-3">กำลังโหลดรายการยา...</td></tr>
+                    <tr><td colspan="9" class="text-center py-3">กำลังโหลดรายการยา...</td></tr>
                 </tbody>
             </table>
         </div>
         <div class="flex justify-end mt-6 space-x-3">
-            ${status === 'รออนุมัติ' && currentUser.role === 'เจ้าหน้าที่ รพสต.' ? `<button type="button" class="btn btn-danger" onclick="cancelRequisition(${requisitionId}, '${requisitionNumber}')">ยกเลิกใบเบิก</button>` : ''}
+            ${status === 'รออนุมัติ' && currentUser.role === 'เจ้าหน้าที่ รพสต.' && currentUser.hcode === reqHeaderData.requester_hcode ? `<button type="button" class="btn btn-danger" onclick="cancelRequisition(${requisitionId}, '${requisitionNumber}')">ยกเลิกใบเบิก</button>` : ''}
             <button type="button" class="btn btn-secondary" onclick="closeModal('formModal')">ปิด</button>
         </div>
     `;
@@ -277,15 +304,18 @@ async function openRequisitionDetailsModal(requisitionNumber, requester, date, s
                     <td>${item.generic_name}</td>
                     <td>${item.strength || '-'}</td>
                     <td>${item.unit}</td>
+                    <td class="text-center">${item.total_quantity_on_hand !== null ? item.total_quantity_on_hand : '-'}</td>
+                    <td class="text-center">${item.min_stock !== null ? item.min_stock : '-'}</td>
+                    <td class="text-center">${item.max_stock !== null ? item.max_stock : '-'}</td>
                     <td class="text-center">${item.quantity_requested}</td>
                     <td class="text-center">${item.quantity_approved !== null ? item.quantity_approved : '-'}</td>
                 `;
             });
         } else {
-            itemsTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-4">ไม่พบรายการยาในใบเบิกนี้</td></tr>';
+            itemsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-gray-500 py-4">ไม่พบรายการยาในใบเบิกนี้</td></tr>'; // Updated colspan
         }
     } catch (error) {
-        itemsTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดรายการยา</td></tr>';
+        itemsTableBody.innerHTML = '<tr><td colspan="9" class="text-center text-red-500 py-4">เกิดข้อผิดพลาดในการโหลดรายการยา</td></tr>'; // Updated colspan
     }
 }
 
@@ -324,6 +354,9 @@ async function openApproveRequisitionModal(requisitionId, requisitionNumber) {
                 itemsHtml += `
                     <tr data-requisition-item-id="${item.requisition_item_id}">
                         <td>${item.generic_name || 'N/A'} (${item.strength || 'N/A'})</td>
+                        <td class="text-center">${item.total_quantity_on_hand !== null ? item.total_quantity_on_hand : '-'}</td>
+                        <td class="text-center">${item.min_stock !== null ? item.min_stock : '-'}</td>
+                        <td class="text-center">${item.max_stock !== null ? item.max_stock : '-'}</td>
                         <td class="text-center">${item.quantity_requested}</td>
                         <td><input type="number" name="items[${index}][quantity_approved]" class="input-field !p-1.5 text-sm w-20 !mb-0" value="${quantityToApprove}" min="0" max="${item.quantity_requested}"></td>
                         <td><input type="text" name="items[${index}][approved_lot_number]" class="input-field !p-1.5 text-sm w-28 !mb-0" placeholder="P12345" value="${approvedLot}"></td>
@@ -340,7 +373,7 @@ async function openApproveRequisitionModal(requisitionId, requisitionNumber) {
                 `;
             });
         } else {
-            itemsHtml = '<tr><td colspan="7" class="text-center py-3">ไม่พบรายการยาในใบเบิกนี้</td></tr>';
+            itemsHtml = '<tr><td colspan="10" class="text-center py-3">ไม่พบรายการยาในใบเบิกนี้</td></tr>'; // Updated colspan
         }
 
         modalBody.innerHTML = `
@@ -352,7 +385,20 @@ async function openApproveRequisitionModal(requisitionId, requisitionNumber) {
                 <h4 class="font-semibold mb-2 text-gray-700">รายการยาที่ขอเบิก:</h4>
                 <div class="overflow-x-auto mb-4">
                     <table class="custom-table text-sm">
-                        <thead><tr><th>ชื่อยา</th><th>จำนวนขอเบิก</th><th>จำนวนอนุมัติ</th><th>Lot No. (จ่ายจาก)</th><th>Exp. Date</th><th>เหตุผล</th><th>ดำเนินการ</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>ชื่อยา</th>
+                                <th class="text-center">คงคลัง</th>
+                                <th class="text-center">Min</th>
+                                <th class="text-center">Max</th>
+                                <th class="text-center">ขอเบิก</th>
+                                <th>จำนวนอนุมัติ</th>
+                                <th>Lot No. (จ่ายจาก)</th>
+                                <th>Exp. Date</th>
+                                <th>เหตุผล</th>
+                                <th>ดำเนินการ</th>
+                            </tr>
+                        </thead>
                         <tbody id="approveRequisitionItemsTableBody">
                             ${itemsHtml}
                         </tbody>
@@ -503,6 +549,106 @@ async function cancelRequisition(requisitionId, requisitionNumber) {
  * @param {number} requisitionId - The ID of the requisition to print.
  * @param {string} requisitionNumber - The number of the requisition.
  */
+
+// Callback function for when a medicine is selected in a dynamic item row for requisitions
+function onMedicineSelectedForRequisition(selectedItem, rowElement, itemIndex) {
+    if (!rowElement) {
+        console.warn("onMedicineSelectedForRequisition: rowElement is undefined for index", itemIndex);
+        return;
+    }
+    let stockInfoDiv = rowElement.querySelector(`#stockInfo_row_${itemIndex}`);
+    if (!stockInfoDiv) {
+        stockInfoDiv = document.createElement('div');
+        stockInfoDiv.id = `stockInfo_row_${itemIndex}`;
+        stockInfoDiv.className = 'text-xs text-gray-600 ml-2 mt-1 col-span-full md:col-span-1'; // Adjust grid span as needed
+        
+        // Find a suitable place to insert it. After the quantity input's parent div, for example.
+        const quantityInputParent = rowElement.querySelector('input[name*="[quantity_requested]"]').parentNode;
+        if (quantityInputParent && quantityInputParent.parentNode === rowElement) { // Ensure it's a direct child div
+             quantityInputParent.insertAdjacentElement('afterend', stockInfoDiv);
+        } else { // Fallback: append to the row itself or a specific container within the row
+            const firstCell = rowElement.querySelector('div'); // First div cell
+            if (firstCell) firstCell.appendChild(stockInfoDiv); // Append to the first cell/column div
+        }
+    }
+
+    if (selectedItem) {
+        const currentStock = selectedItem.total_quantity_on_hand !== null ? selectedItem.total_quantity_on_hand : 'N/A';
+        const minStock = selectedItem.min_stock !== null ? selectedItem.min_stock : 'N/A';
+        const maxStock = selectedItem.max_stock !== null ? selectedItem.max_stock : 'N/A';
+        stockInfoDiv.innerHTML = `<i>Stock: ${currentStock} (Min: ${minStock}, Max: ${maxStock})</i>`;
+    } else {
+        stockInfoDiv.innerHTML = ''; // Clear if no item selected or data missing
+    }
+}
+
+
+async function handleAutoGenerateItems() {
+    if (!currentUser || !currentUser.hcode) {
+        Swal.fire('Error', 'User hcode not found. Please log in again.', 'error');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Generating items...',
+        text: 'Please wait while suggested items are being fetched.',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    try {
+        const suggestedItems = await fetchData(`/requisitions/suggest-auto-items?hcode=${currentUser.hcode}`);
+        
+        const itemsContainer = document.getElementById('requisitionItemsContainer');
+        const itemsInfoContainer = document.getElementById('itemsInfoContainer'); // For displaying stock info
+
+        if (!itemsContainer || !itemsInfoContainer) {
+            Swal.fire('Error', 'UI components for items not found.', 'error');
+            return;
+        }
+        
+        // Clear existing items (user might want a confirmation here in a real app)
+        itemsContainer.innerHTML = '';
+        itemsInfoContainer.innerHTML = ''; // Clear previous stock info displays
+        if (typeof window.resetDynamicItemIndex === 'function') { // Assuming resetDynamicItemIndex is global from utils.js
+            window.resetDynamicItemIndex('items'); 
+        }
+
+
+        if (suggestedItems && suggestedItems.length > 0) {
+            suggestedItems.forEach(item => {
+                // This is where addDynamicItemRow would be ideally refactored.
+                // For now, we'll simulate its outcome or call a placeholder.
+                // The actual 'addDynamicItemRow' from utils.js needs to be made capable
+                // of accepting 'item' and populating the row.
+                if (typeof addDynamicItemRow === "function") {
+                     addDynamicItemRow(
+                        'requisitionItemsContainer',
+                        ['medicine-search', 'number'],
+                        ['ค้นหารหัสยา/ชื่อยา', 'จำนวน'],
+                        ['medicine_id', 'quantity_requested'],
+                        'items',
+                        currentUser.hcode,
+                        'onMedicineSelectedForRequisition', // Changed to string: The callback to display stock info
+                        item // Pass the prefilled item
+                    );
+                } else {
+                    console.error("addDynamicItemRow function is not available or not correctly refactored.");
+                }
+            });
+            Swal.fire('Success', `${suggestedItems.length} items suggested and added. Please review quantities.`, 'success');
+        } else {
+            Swal.fire('Info', 'No items currently require reordering based on Min/Max levels.', 'info');
+        }
+    } catch (error) {
+        console.error('Error auto-generating requisition items:', error);
+        Swal.fire('Error', `Failed to suggest items: ${error.message || 'Unknown error'}`, 'error');
+    }
+}
+
+
 async function handlePrintRequisition(requisitionId, requisitionNumber) {
     console.log(`Attempting to print requisition ID: ${requisitionId}, Number: ${requisitionNumber}`);
     
